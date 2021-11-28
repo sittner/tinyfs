@@ -20,16 +20,17 @@ typedef struct {
 #define TFS_BLOCKSIZE_WIDTH 9
 #define TFS_BLOCKSIZE       (1 << TFS_BLOCKSIZE_WIDTH)
 
-#define TFS_ERR_OK          0
-#define TFS_ERR_DISK_FULL   1
-#define TFS_ERR_FILE_EXIST  2
-#define TFS_ERR_DIR_EXIST   3
-#define TFS_ERR_NOT_EXIST   4
-#define TFS_ERR_CHECKSUM    5
-#define TFS_ERR_IO          6
-#define TFS_ERR_NO_NAME     7
-#define TFS_ERR_NAME_INVAL  8
-#define TFS_ERR_UNEXP_EOF   9
+#define TFS_ERR_OK           0
+#define TFS_ERR_DISK_FULL    1
+#define TFS_ERR_FILE_EXIST   2
+#define TFS_ERR_DIR_EXIST    3
+#define TFS_ERR_NOT_EXIST    4
+#define TFS_ERR_CHECKSUM     5
+#define TFS_ERR_IO           6
+#define TFS_ERR_NO_NAME      7
+#define TFS_ERR_NAME_INVAL   8
+#define TFS_ERR_UNEXP_EOF    9
+#define TFS_ERR_NOT_EMPTY    10
 
 extern TFS_DRIVE_INFO dev_info;
 extern uint8_t last_error;
@@ -45,7 +46,7 @@ void tfs_show_dir(void);
 void tfs_change_dir(const char *name);
 void tfs_create_dir(const char *name);
 
-void tfs_write_file(const char *name, const void *data, uint16_t len);
+void tfs_write_file(const char *name, const void *data, uint16_t len, uint8_t overwrite);
 void tfs_read_file(const char *name, void *data, uint16_t max_len);
 
 #endif
