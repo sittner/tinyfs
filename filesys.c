@@ -682,21 +682,21 @@ void tfs_write_file(const char *name, const void *data, uint16_t len, uint8_t ov
   last_error = TFS_ERR_OK;
 }
 
-void tfs_read_file(const char *name, void *data, uint16_t max_len) {
+uint16_t tfs_read_file(const char *name, void *data, uint16_t max_len) {
   TFS_DIR_ITEM *item;
   uint32_t pos;
-  uint16_t len, blk_len;
+  uint16_t len, rem, blk_len;
 
   // search for file
   item = find_file(name, 0);
   if (last_error != TFS_ERR_OK) {
-    return;
+    return 0;
   }
 
   // file not found?
   if (item == NULL || item->type != TFS_DIR_ITEM_FILE) {
     last_error = TFS_ERR_NOT_EXIST;
-    return;
+    return 0;
   }
 
   // initialize loop
@@ -706,20 +706,21 @@ void tfs_read_file(const char *name, void *data, uint16_t max_len) {
     len = max_len;
   }
 
+  rem = len;
   while (1) {
     // read next data block
     dev_read_block(pos, blk_buf.raw);
     if (last_error != TFS_ERR_OK) {
-      return;
+      return 0;
     }
 
     // calculate block length and update remaining length
-    if (len > TFS_DATA_LEN) {
+    if (rem > TFS_DATA_LEN) {
       blk_len = TFS_DATA_LEN;
-      len -= TFS_DATA_LEN;
+      rem -= TFS_DATA_LEN;
     } else {
-      blk_len = len;
-      len = 0;
+      blk_len = rem;
+      rem = 0;
     }
 
     // copy user data
@@ -729,13 +730,13 @@ void tfs_read_file(const char *name, void *data, uint16_t max_len) {
     // go to next data block
     pos = blk_buf.data.next;
     if (pos == 0) {
-      if (len > 0) {
+      if (rem > 0) {
         last_error = TFS_ERR_UNEXP_EOF;
-        return;
+        return 0;
       }
 
       last_error = TFS_ERR_OK;
-      return;
+      return len;
     }
   }
 }
