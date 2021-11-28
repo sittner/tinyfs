@@ -49,4 +49,6 @@ void tfs_create_dir(const char *name);
 void tfs_write_file(const char *name, const void *data, uint16_t len, uint8_t overwrite);
 void tfs_read_file(const char *name, void *data, uint16_t max_len);
 
+void tfs_delete(const char *name);
+
 #endif
