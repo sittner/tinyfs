@@ -29,6 +29,7 @@ typedef struct {
 #define TFS_ERR_IO          6
 #define TFS_ERR_NO_NAME     7
 #define TFS_ERR_NAME_INVAL  8
+#define TFS_ERR_UNEXP_EOF   9
 
 extern TFS_DRIVE_INFO dev_info;
 extern uint8_t last_error;

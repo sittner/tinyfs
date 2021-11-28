@@ -491,30 +491,44 @@ void tfs_read_file(const char *name, void *data, uint16_t max_len) {
     return;
   }
 
+  // initialize loop
   pos = item->blk;
   len = item->size;
-
   if (len > max_len) {
     len = max_len;
   }
 
   while (1) {
+    // read next data block
     dev_read_block(pos, blk_buf.raw);
     if (last_error != TFS_ERR_OK) {
       return;
     }
 
-    blk_len = len < TFS_DATA_LEN ? len : TFS_DATA_LEN;
-    memcpy(data, blk_buf.data.data, blk_len);
-
-    pos = blk_buf.data.next;
-    if (pos == 0) {
-      break;
+    // calculate block length and update remaining length
+    if (len > TFS_DATA_LEN) {
+      blk_len = TFS_DATA_LEN;
+      len -= TFS_DATA_LEN;
+    } else {
+      blk_len = len;
+      len = 0;
     }
 
+    // copy user data
+    memcpy(data, blk_buf.data.data, blk_len);
+    data += blk_len;
 
+    // go to next data block
+    pos = blk_buf.data.next;
+    if (pos == 0) {
+      if (len > 0) {
+        last_error = TFS_ERR_UNEXP_EOF;
+        return;
+      }
+
+      last_error = TFS_ERR_OK;
+      return;
+    }
   }
-
 }
-
 
