@@ -320,7 +320,6 @@ void tfs_format(void) {
 
   // init root directory
   memset(blk_buf.raw, 0, TFS_BLOCKSIZE);
-  blk_buf.dir.parent = pos; //it's its own parent
 
   // write block
   dev_write_block(pos, blk_buf.raw);
@@ -393,6 +392,10 @@ void tfs_change_dir(const char *name) {
   if (strcmp(name, "..") == 0) {
     dev_read_block(current_dir_blk, blk_buf.raw);
     if (last_error != TFS_ERR_OK) {
+      return;
+    }
+    if (blk_buf.dir.parent == 0) {
+      last_error = TFS_ERR_NOT_EXIST;
       return;
     }
     current_dir_blk = blk_buf.dir.parent;
