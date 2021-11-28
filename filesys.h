@@ -14,7 +14,15 @@ typedef struct {
   uint32_t blk_count;
 } TFS_DRIVE_INFO;
 
-#define TFS_BLOCKSIZE 512
+#define TFS_NAME_LEN 16
+
+// blocksize results in 512 bytes (9 relevant bits)
+#define TFS_BLOCKSIZE_WIDTH 9
+#define TFS_BLOCKSIZE       (1 << TFS_BLOCKSIZE_WIDTH)
+
+// first bitmap block must start at 0 to simlify offset calculation
+#define TFS_FIRST_BITMAP_BLK 0
+#define TFS_ROOT_DIR_BLK     1
 
 #define TFS_ERR_OK          0
 #define TFS_ERR_DISK_FULL   1
@@ -30,9 +38,6 @@ typedef struct {
 #define TFS_BLK_TYPE_DIR  1
 #define TFS_BLK_TYPE_BMAP 2
 #define TFS_BLK_TYPE_FILE 3
-
-#define TFS_FIRST_BITMAP_BLK 2
-#define TFS_ROOT_DIR_BLK     3
 
 extern TFS_DRIVE_INFO dev_info;
 extern uint8_t last_error;

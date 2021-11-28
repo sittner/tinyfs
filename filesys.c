@@ -6,61 +6,54 @@
 #include <stdio.h>
 
 typedef struct {
-  uint8_t type;
   uint32_t prev;
   uint32_t next;
-} __attribute__((packed)) TFS_BLK_HDR;
-
-#define TFS_DATA_LEN 499
-
-typedef struct {
-  TFS_BLK_HDR header;
-  uint32_t bitmap;
-  uint8_t data[TFS_DATA_LEN];
+  uint8_t data[];
 } __attribute__((packed)) TFS_DATA_BLK;
 
-#define TFS_NAME_LEN 16
+#define TFS_DATA_LEN (TFS_BLOCKSIZE - sizeof(TFS_DATA_BLK))
 
 typedef struct {
-  uint8_t type;
   uint32_t blk;
   uint16_t size;
+  uint8_t type;
   char name[TFS_NAME_LEN + 1];
 } __attribute__((packed)) TFS_DIR_ITEM;
 
-#define TFS_DIR_BLK_ITEMS 20
-
 typedef struct {
-  TFS_BLK_HDR header;
-  uint32_t bitmap;
+  uint32_t prev;
+  uint32_t next;
   uint32_t parent;
-  TFS_DIR_ITEM items[TFS_DIR_BLK_ITEMS];
+  TFS_DIR_ITEM items[];
 } __attribute__((packed)) TFS_DIR_BLK;
 
-#define TFS_BITMAP_BLK_BYTES 503
-#define TFS_BITMAP_BLK_COUNT (TFS_BITMAP_BLK_BYTES * 8)
+#define TFS_DIR_BLK_ITEMS ((TFS_BLOCKSIZE - sizeof(TFS_DIR_BLK)) / sizeof(TFS_DIR_ITEM))
 
-typedef struct {
-  TFS_BLK_HDR header;
-  uint8_t data[TFS_BITMAP_BLK_BYTES];
-} __attribute__((packed)) TFS_BITMAP_BLK;
+typedef union {
+  uint8_t raw[TFS_BLOCKSIZE];
+  TFS_DIR_BLK dir;
+  TFS_DATA_BLK data;
+} TFS_BLK_BUFFER;
 
 TFS_DRIVE_INFO dev_info;
 uint8_t last_error;
 
 static const char *invalid_names[] = { "/", ".", "..", NULL };
 
+#define TFS_BITMAP_BLK_INVAL  0xffff
+#define TFS_BITMAP_BLK_COUNT  (TFS_BLOCKSIZE << 3)
+#define TFS_BITMAP_BLK_MASK   (TFS_BITMAP_BLK_COUNT - 1)
+
+#define GET_BITMAK_BLK(x) ((x) & ~TFS_BITMAP_BLK_MASK)
+
+static uint32_t last_bitmap_blk;
 static uint32_t loaded_bitmap_blk;
-static TFS_BITMAP_BLK bitmap_blk;
+static uint8_t bitmap_blk[TFS_BLOCKSIZE];
 
 static uint32_t current_dir_blk;
 static uint32_t loaded_dir_blk;
 
-static union {
-  uint8_t raw[TFS_BLOCKSIZE];
-  TFS_DIR_BLK dir;
-  TFS_DATA_BLK data;
-} blk_buf;
+static TFS_BLK_BUFFER blk_buf;
 
 static void check_name(const char *name);
 static void init_bitmap(void);
@@ -99,7 +92,7 @@ static uint32_t alloc_block(void) {
   uint8_t mask;
 
   // no current bitmap block -> full was detected
-  if (loaded_bitmap_blk == 0) {
+  if (loaded_bitmap_blk == TFS_BITMAP_BLK_INVAL) {
     last_error = TFS_ERR_DISK_FULL;
     return 0;
   }
@@ -107,7 +100,7 @@ static uint32_t alloc_block(void) {
   start = loaded_bitmap_blk;
   while (1) {
     // serach for free block in current bitmap block
-    for (i = 0, p = bitmap_blk.data, block = loaded_bitmap_blk; i < TFS_BITMAP_BLK_BYTES; i++, p++, block += 8) {
+    for (i = 0, p = bitmap_blk, block = loaded_bitmap_blk; i < TFS_BLOCKSIZE; i++, p++, block += 8) {
       if (*p != 0xff) {
         for (mask = 1; mask != 0; mask <<= 1, block++) {
           if ((*p & mask) == 0) {
@@ -128,15 +121,16 @@ static uint32_t alloc_block(void) {
     }
 
     // no free block found, go to next one
-    // turn around on end of chain
-    loaded_bitmap_blk = bitmap_blk.header.next;
-    if (loaded_bitmap_blk == 0) {
+    // turn around on end of disk
+    if (loaded_bitmap_blk == last_bitmap_blk) {
       loaded_bitmap_blk = TFS_FIRST_BITMAP_BLK;
+    } else {
+      loaded_bitmap_blk += TFS_BITMAP_BLK_COUNT;
     }
 
-    // disk full, if we are back to where we have started
+    // disk is full if we're back to where we have started
     if (loaded_bitmap_blk == start) {
-      loaded_bitmap_blk = 0;
+      loaded_bitmap_blk = TFS_BITMAP_BLK_INVAL;
       last_error = TFS_ERR_DISK_FULL;
       return 0;
     }
@@ -188,7 +182,7 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
     }
 
     // go to next block in chain
-    pos = blk_buf.dir.header.next;
+    pos = blk_buf.dir.next;
     if (pos == 0) {
       break;
     }
@@ -221,7 +215,7 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
   }
 
   // add pointer to new block to last one
-  blk_buf.dir.header.next = free_blk;
+  blk_buf.dir.next = free_blk;
   dev_write_block(loaded_dir_blk, blk_buf.raw);
   if (last_error != TFS_ERR_OK) {
     return NULL;
@@ -229,9 +223,8 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
 
   // initialize new block
   // keep some fields from the last one loaded (e.g. type, patent)
-  blk_buf.dir.header.prev = loaded_dir_blk;
-  blk_buf.dir.header.next = 0;
-  blk_buf.dir.bitmap = loaded_bitmap_blk;
+  blk_buf.dir.prev = loaded_dir_blk;
+  blk_buf.dir.next = 0;
   memset(blk_buf.dir.items, 0, sizeof(TFS_DIR_ITEM) * TFS_DIR_BLK_ITEMS);
   loaded_dir_blk = free_blk;
 
@@ -246,6 +239,7 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
 }
 
 void tfs_init(void) {
+  last_bitmap_blk =  GET_BITMAK_BLK(dev_info.blk_count);
   last_error = TFS_ERR_OK;
 
   init_bitmap();
@@ -257,41 +251,32 @@ void tfs_init(void) {
 }
 
 void tfs_format(void) {
-  uint32_t pos, tmp;
-  uint8_t mask;
+  uint32_t pos;
+  uint8_t mask, last;
   uint16_t offset;
 
   printf("formating disk... please wait\n\n");
 
   // write the bitmap-blocks
   printf("writing bitmap-blocks:\n");
-
-  // start start conditions
   // first block always in use (the bitmapblock itself)
-  memset(&bitmap_blk, 0, sizeof(TFS_BITMAP_BLK));
-  bitmap_blk.header.type = TFS_BLK_TYPE_BMAP;
-  bitmap_blk.data[0] = 1;
+  memset(&bitmap_blk, 0, TFS_BLOCKSIZE);
+  bitmap_blk[0] = 1;
   pos = TFS_FIRST_BITMAP_BLK;
-
+  last = 0;
   while(1) {
     // print progress
     printf("  pos: %u\r", pos);
 
-    // check remaining blocks
-    tmp = dev_info.blk_count - pos;
-    if (tmp > (TFS_BITMAP_BLK_COUNT + 1)) {
-      // calc position of next bitmapblock
-      bitmap_blk.header.next = pos + TFS_BITMAP_BLK_COUNT;
-    } else {
-      // this is the last one
-      bitmap_blk.header.next = 0;
-
+    if (pos == last_bitmap_blk) {
+      last = 1;
       // mark all blocks after end of disk as used
-      mask = 0xff << (tmp & 0x07);
-      offset = tmp >> 3;
-      bitmap_blk.data[offset] |= mask;
-      for (offset++; offset < TFS_BITMAP_BLK_BYTES; offset++) {
-        bitmap_blk.data[offset] = 0xff;
+      offset = pos & TFS_BITMAP_BLK_MASK;
+      mask = 0xff << (offset & 0x07);
+      offset >>= 3;
+      bitmap_blk[offset] |= mask;
+      for (offset++; offset < TFS_BLOCKSIZE; offset++) {
+        bitmap_blk[offset] = 0xff;
       }
     }
 
@@ -302,14 +287,13 @@ void tfs_format(void) {
     }
 
     // break on last block
-    if (bitmap_blk.header.next == 0) {
+    if (last) {
       printf("\n");
       break;
     }
 
     // skip to next block
-    bitmap_blk.header.prev = pos;
-    pos = bitmap_blk.header.next;
+    pos += TFS_BITMAP_BLK_COUNT;
   };
 
   // read the first bitmap-block
@@ -321,19 +305,17 @@ void tfs_format(void) {
   printf("creating root-directory\n");
 
   // alloc root dir block (should be block 3)
-  tmp = alloc_block();
+  pos = alloc_block();
   if (last_error != TFS_ERR_OK) {
     return;
   }
 
   // init root directory
   memset(blk_buf.raw, 0, TFS_BLOCKSIZE);
-  blk_buf.dir.header.type = TFS_BLK_TYPE_DIR;
-  blk_buf.dir.bitmap = loaded_bitmap_blk;
-  blk_buf.dir.parent = tmp; //it's its own parent
+  blk_buf.dir.parent = pos; //it's its own parent
 
   // write block
-  dev_write_block(tmp, blk_buf.raw);
+  dev_write_block(pos, blk_buf.raw);
   if (last_error != TFS_ERR_OK) {
     return;
   }
@@ -379,7 +361,7 @@ void tfs_show_dir(void) {
     }
 
     // go to next block in chain
-    pos = blk_buf.dir.header.next;
+    pos = blk_buf.dir.next;
     if (pos == 0) {
       break;
     }
@@ -429,7 +411,7 @@ void tfs_change_dir(const char *name) {
 
 void tfs_create_dir(const char *name) {
   TFS_DIR_ITEM *item;
-  uint32_t tmp;
+  uint32_t new;
 
   // check for invalid names
   check_name(name);
@@ -450,14 +432,14 @@ void tfs_create_dir(const char *name) {
   }
 
   // alloc new dir block
-  tmp = alloc_block();
+  new = alloc_block();
   if (last_error != TFS_ERR_OK) {
     return;
   }
 
   // update item
   item->type = TFS_BLK_TYPE_DIR;
-  item->blk = tmp;
+  item->blk = new;
   item->size = 0;
   scopy(item->name, name, TFS_NAME_LEN);
   dev_write_block(loaded_dir_blk, blk_buf.raw);
@@ -467,12 +449,10 @@ void tfs_create_dir(const char *name) {
 
   // init sub directory
   memset(blk_buf.raw, 0, TFS_BLOCKSIZE);
-  blk_buf.dir.header.type = TFS_BLK_TYPE_DIR;
-  blk_buf.dir.bitmap = loaded_bitmap_blk;
   blk_buf.dir.parent = loaded_dir_blk;
 
   // write block
-  dev_write_block(tmp, blk_buf.raw);
+  dev_write_block(new, blk_buf.raw);
   if (last_error != TFS_ERR_OK) {
     return;
   }
@@ -516,7 +496,7 @@ void tfs_read_file(const char *name, void *data, uint16_t max_len) {
     blk_len = len < TFS_DATA_LEN ? len : TFS_DATA_LEN;
     memcpy(data, blk_buf.data.data, blk_len);
 
-    pos = blk_buf.data.header.next;
+    pos = blk_buf.data.next;
     if (pos == 0) {
       break;
     }
