@@ -104,11 +104,24 @@ char *split(char *s) {
   return s;
 }
 
+int print_error(void) {
+  if (last_error != TFS_ERR_OK) {
+    printf("error %d.\n", last_error);
+    return 1;
+  }
+
+  return 0;
+}
+
 int main(void) {
   char *cmd = NULL;
   size_t bufLen = 0;
   ssize_t len = 0;
   char *params;
+  char *fname;
+  uint8_t fileBuf[0xffff];
+  size_t fileLen;
+  FILE *filePtr;
 
   if (dev_open("sdcard.img") < 0) {
     fprintf(stderr, "Failed open device (error %d).\n", errno);
@@ -142,29 +155,82 @@ int main(void) {
 
     if (strcmp(cmd, "mkfs") == 0) {
       tfs_format();
-      printf("err: %d\n", last_error);
+      print_error();
       continue;
     }
 
     if (strcmp(cmd, "ls") == 0) {
       tfs_show_dir();
-      printf("err: %d\n", last_error);
+      print_error();
       continue;
     }
 
     if (strcmp(cmd, "cd") == 0) {
       tfs_change_dir(params);
-      printf("err: %d\n", last_error);
+      print_error();
       continue;
     }
 
-    if (strcmp(cmd, "mkdir") == 0) {
+    if (strcmp(cmd, "md") == 0) {
       tfs_create_dir(params);
-      printf("err: %d\n", last_error);
+      print_error();
       continue;
     }
 
-    printf("'%s'\n", cmd);
+    if (strcmp(cmd, "rm") == 0) {
+      tfs_delete(params);
+      print_error();
+      continue;
+    }
+
+    if (strcmp(cmd, "rd") == 0) {
+      fname = split(params);
+      if (fname == NULL || fname[0] == 0 || params[0] == 0) {
+        printf("usage: rd <tfs name> <local name>\n");
+        continue;
+      }
+
+      fileLen = tfs_read_file(params, fileBuf, sizeof(fileBuf));
+      if (print_error()) {
+        continue;
+      }
+
+      filePtr = fopen(fname, "wb");
+      if (filePtr == NULL) {
+        printf("failed to open local file\n");
+        continue;
+      }
+
+      fwrite(fileBuf, 1, fileLen, filePtr);
+      fclose(filePtr);
+      continue;
+    }
+
+    if (strcmp(cmd, "wr") == 0) {
+      fname = split(params);
+      if (fname == NULL || fname[0] == 0 || params[0] == 0) {
+        printf("usage: wr <tfs name> <local name>\n");
+        continue;
+      }
+
+      filePtr = fopen(fname, "rb");
+      if (filePtr == NULL) {
+        printf("failed to open local file\n");
+        continue;
+      }
+
+      fileLen = fread(fileBuf, 1, sizeof(fileBuf), filePtr);
+      fclose(filePtr);
+
+      tfs_write_file(params, fileBuf, fileLen, 1);
+      if (print_error()) {
+        continue;
+      }
+
+      continue;
+    }
+
+    printf("Unknown command '%s'\n", cmd);
   }
 
   free(cmd);
