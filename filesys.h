@@ -20,10 +20,6 @@ typedef struct {
 #define TFS_BLOCKSIZE_WIDTH 9
 #define TFS_BLOCKSIZE       (1 << TFS_BLOCKSIZE_WIDTH)
 
-// first bitmap block must start at 0 to simlify offset calculation
-#define TFS_FIRST_BITMAP_BLK 0
-#define TFS_ROOT_DIR_BLK     1
-
 #define TFS_ERR_OK          0
 #define TFS_ERR_DISK_FULL   1
 #define TFS_ERR_FILE_EXIST  2
@@ -33,11 +29,6 @@ typedef struct {
 #define TFS_ERR_IO          6
 #define TFS_ERR_NO_NAME     7
 #define TFS_ERR_NAME_INVAL  8
-
-#define TFS_BLK_TYPE_FREE 0
-#define TFS_BLK_TYPE_DIR  1
-#define TFS_BLK_TYPE_BMAP 2
-#define TFS_BLK_TYPE_FILE 3
 
 extern TFS_DRIVE_INFO dev_info;
 extern uint8_t last_error;

@@ -5,6 +5,10 @@
 
 #include <stdio.h>
 
+// first bitmap block must start at 0 to simlify offset calculation
+#define TFS_FIRST_BITMAP_BLK 0
+#define TFS_ROOT_DIR_BLK     1
+
 typedef struct {
   uint32_t prev;
   uint32_t next;
@@ -19,6 +23,10 @@ typedef struct {
   uint8_t type;
   char name[TFS_NAME_LEN + 1];
 } __attribute__((packed)) TFS_DIR_ITEM;
+
+#define TFS_DIR_ITEM_FREE 0
+#define TFS_DIR_ITEM_DIR  1
+#define TFS_DIR_ITEM_FILE 2
 
 typedef struct {
   uint32_t prev;
@@ -166,7 +174,7 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
 
     // iterrate items
     for (i = 0, p = blk_buf.dir.items; i < TFS_DIR_BLK_ITEMS; i++, p++) {
-      if (p->type == TFS_BLK_TYPE_FREE) {
+      if (p->type == TFS_DIR_ITEM_FREE) {
         // remember free item, if found one
         if (free_item < 0) {
           free_blk = pos;
@@ -346,14 +354,14 @@ void tfs_show_dir(void) {
     // iterrate items
     for (i = 0, p = blk_buf.dir.items; i < TFS_DIR_BLK_ITEMS; i++, p++) {
       // show sub directory item
-      if (p->type == TFS_BLK_TYPE_DIR) {
+      if (p->type == TFS_DIR_ITEM_DIR) {
         dirs++;
         printf("<DIR> %s\n", p->name);
         continue;
       }
 
       // show file item
-      if (p->type == TFS_BLK_TYPE_FILE) {
+      if (p->type == TFS_DIR_ITEM_FILE) {
         files++;
         printf("%5u %s\n", p->size, p->name);
         continue;
@@ -399,7 +407,7 @@ void tfs_change_dir(const char *name) {
   }
 
   // directory not found?
-  if (item == NULL || item->type != TFS_BLK_TYPE_DIR) {
+  if (item == NULL || item->type != TFS_DIR_ITEM_DIR) {
     last_error = TFS_ERR_NOT_EXIST;
     return;
   }
@@ -426,7 +434,7 @@ void tfs_create_dir(const char *name) {
   }
 
   // directory already exists?
-  if (item->type != TFS_BLK_TYPE_FREE) {
+  if (item->type != TFS_DIR_ITEM_FREE) {
     last_error = TFS_ERR_DIR_EXIST;
     return;
   }
@@ -438,7 +446,7 @@ void tfs_create_dir(const char *name) {
   }
 
   // update item
-  item->type = TFS_BLK_TYPE_DIR;
+  item->type = TFS_DIR_ITEM_DIR;
   item->blk = new;
   item->size = 0;
   scopy(item->name, name, TFS_NAME_LEN);
@@ -475,7 +483,7 @@ void tfs_read_file(const char *name, void *data, uint16_t max_len) {
   }
 
   // file not found?
-  if (item == NULL || item->type != TFS_BLK_TYPE_FILE) {
+  if (item == NULL || item->type != TFS_DIR_ITEM_FILE) {
     last_error = TFS_ERR_NOT_EXIST;
     return;
   }
