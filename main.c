@@ -157,7 +157,7 @@ static void print_dir_item(const TFS_DIR_ITEM *item) {
   }
 }
 
-int main(void) {
+int main(int argc, char **argv) {
   char *cmd = NULL;
   size_t bufLen = 0;
   ssize_t len = 0;
@@ -167,7 +167,12 @@ int main(void) {
   size_t fileLen;
   FILE *filePtr;
 
-  if (dev_open("sdcard.img") < 0) {
+  if (argc != 2) {
+    fprintf(stderr, "usage: fstest <device/image file>	\n");
+    return 1;
+  }
+
+  if (dev_open(argv[1]) < 0) {
     fprintf(stderr, "Failed open device (error %d).\n", errno);
     return 1;
   }

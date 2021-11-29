@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/fs.h>
 
 static int dev_fd;
 
@@ -30,6 +32,19 @@ int dev_open(const char *dev) {
     strcpy(dev_info.fw, "N/A");
     strcpy(dev_info.serno, "N/A");
     dev_info.blk_count = st.st_size / TFS_BLOCKSIZE;
+    return 0;
+  }
+
+  if (S_ISBLK(st.st_mode)) {
+    uint64_t size;
+    if (ioctl(dev_fd, BLKGETSIZE64, &size) < 0) {
+      goto fail1;
+    }
+
+    strcpy(dev_info.model, "sd-card");
+    strcpy(dev_info.fw, "N/A");
+    strcpy(dev_info.serno, "N/A");
+    dev_info.blk_count = size / TFS_BLOCKSIZE;
     return 0;
   }
 
