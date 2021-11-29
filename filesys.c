@@ -68,8 +68,6 @@ static void check_name(const char *name) {
       return;
     }
   }
-
-  last_error = TFS_ERR_OK;
 }
 
 static void load_bitmap(uint32_t pos) {
@@ -112,7 +110,6 @@ static uint32_t alloc_block(void) {
               return 0;
             }
 
-            last_error = TFS_ERR_OK;
             return block;
           }
         }
@@ -167,8 +164,6 @@ static void free_block(uint32_t pos) {
   if (last_error != TFS_ERR_OK) {
     return;
   }
-
-  last_error = TFS_ERR_OK;
 }
 
 static void free_file_blocks(uint32_t pos) {
@@ -183,8 +178,6 @@ static void free_file_blocks(uint32_t pos) {
     }
     pos = blk_buf.data.next;
   }
-
-  last_error = TFS_ERR_OK;
 }
 
 static void init_dir(void) {
@@ -296,7 +289,6 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
       } else {
         // check filename
         if (strncmp(name, p->name, TFS_NAME_LEN) == 0) {
-          last_error = TFS_ERR_OK;
           return p;
         }
       }
@@ -325,7 +317,6 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
       loaded_dir_blk = free_blk;
     }
 
-    last_error = TFS_ERR_OK;
     return &blk_buf.dir.items[free_item];
   }
 
@@ -355,18 +346,17 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
     return NULL;
   }
 
-  last_error = TFS_ERR_OK;
   return blk_buf.dir.items; // first item is free on new block
 }
 
 void tfs_init(void) {
   uint32_t last_blk;
 
+  last_error = TFS_ERR_OK;
+
   last_blk = dev_info.blk_count - 1;
   last_bitmap_blk = GET_BITMAK_BLK(last_blk);
   last_bitmap_len = (last_blk & TFS_BITMAP_BLK_MASK) + 1;
-
-  last_error = TFS_ERR_OK;
 
   load_bitmap(TFS_FIRST_BITMAP_BLK);
   if (last_error != TFS_ERR_OK) {
@@ -374,7 +364,6 @@ void tfs_init(void) {
   }
 
   init_dir();
-  last_error = TFS_ERR_OK;
 }
 
 void tfs_format(void) {
@@ -383,6 +372,7 @@ void tfs_format(void) {
   uint16_t offset;
   uint32_t prog_max = last_bitmap_blk >> TFS_BITMAP_BLK_SHIFT;
 
+  last_error = TFS_ERR_OK;
   tfs_format_state(TFS_FORMAT_STATE_START);
 
   // write the bitmap-blocks
@@ -450,13 +440,14 @@ void tfs_format(void) {
   init_dir();
 
   tfs_format_state(TFS_FORMAT_STATE_DONE);
-  last_error = TFS_ERR_OK;
 }
 
 void tfs_read_dir(DIR_ITEM_HANDLER handler) {
   uint32_t pos = current_dir_blk;
   uint8_t i;
   TFS_DIR_ITEM *p;
+
+  last_error = TFS_ERR_OK;
 
   while (1) {
     // read current directory block
@@ -476,17 +467,16 @@ void tfs_read_dir(DIR_ITEM_HANDLER handler) {
       break;
     }
   }
-
-  last_error = TFS_ERR_OK;
 }
 
 void tfs_change_dir(const char *name) {
   TFS_DIR_ITEM *item;
 
+  last_error = TFS_ERR_OK;
+
   // go to root dir
   if (strcmp(name, "/") == 0) {
     current_dir_blk = TFS_ROOT_DIR_BLK;
-    last_error = TFS_ERR_OK;
     return;
   }
 
@@ -501,7 +491,6 @@ void tfs_change_dir(const char *name) {
       return;
     }
     current_dir_blk = blk_buf.dir.parent;
-    last_error = TFS_ERR_OK;
     return;
   }
 
@@ -519,12 +508,13 @@ void tfs_change_dir(const char *name) {
 
   // set to found item
   current_dir_blk = item->blk;
-  last_error = TFS_ERR_OK;
 }
 
 void tfs_create_dir(const char *name) {
   TFS_DIR_ITEM *item;
   uint32_t new;
+
+  last_error = TFS_ERR_OK;
 
   // check for invalid names
   check_name(name);
@@ -569,14 +559,14 @@ void tfs_create_dir(const char *name) {
   if (last_error != TFS_ERR_OK) {
     return;
   }
-
-  last_error = TFS_ERR_OK;
 }
 
 void tfs_write_file(const char *name, const void *data, uint16_t len, uint8_t overwrite) {
   TFS_DIR_ITEM *item;
   uint32_t pos;
   uint16_t blk_len;
+
+  last_error = TFS_ERR_OK;
 
   // check for invalid names
   check_name(name);
@@ -654,14 +644,14 @@ void tfs_write_file(const char *name, const void *data, uint16_t len, uint8_t ov
 
     pos = blk_buf.data.next;
   }
-
-  last_error = TFS_ERR_OK;
 }
 
 uint16_t tfs_read_file(const char *name, void *data, uint16_t max_len) {
   TFS_DIR_ITEM *item;
   uint32_t pos;
   uint16_t len, rem, blk_len;
+
+  last_error = TFS_ERR_OK;
 
   // search for file
   item = find_file(name, 0);
@@ -711,7 +701,6 @@ uint16_t tfs_read_file(const char *name, void *data, uint16_t max_len) {
         return 0;
       }
 
-      last_error = TFS_ERR_OK;
       return len;
     }
   }
@@ -722,6 +711,8 @@ void tfs_delete(const char *name) {
   uint32_t pos;
   uint8_t i;
   TFS_DIR_ITEM *p;
+
+  last_error = TFS_ERR_OK;
 
   // search for name
   item = find_file(name, 0);
