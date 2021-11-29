@@ -54,6 +54,7 @@ static const char *invalid_names[] = { "/", ".", "..", NULL };
 #define GET_BITMAK_BLK(x) ((x) & ~TFS_BITMAP_BLK_MASK)
 
 static uint32_t last_bitmap_blk;
+static uint16_t last_bitmap_len;
 static uint32_t loaded_bitmap_blk;
 static uint8_t bitmap_blk[TFS_BLOCKSIZE];
 
@@ -372,7 +373,12 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
 }
 
 void tfs_init(void) {
-  last_bitmap_blk =  GET_BITMAK_BLK(dev_info.blk_count);
+  uint32_t last_blk;
+
+  last_blk = dev_info.blk_count - 1;
+  last_bitmap_blk = GET_BITMAK_BLK(last_blk);
+  last_bitmap_len = (last_blk & TFS_BITMAP_BLK_MASK) + 1;
+
   last_error = TFS_ERR_OK;
 
   load_bitmap(TFS_FIRST_BITMAP_BLK);
@@ -405,9 +411,8 @@ void tfs_format(void) {
     if (pos == last_bitmap_blk) {
       last = 1;
       // mark all blocks after end of disk as used
-      offset = pos & TFS_BITMAP_BLK_MASK;
-      mask = 0xff << (offset & 0x07);
-      offset >>= 3;
+      mask = 0xff << (last_bitmap_len & 0x07);
+      offset = last_bitmap_len >> 3;
       bitmap_blk[offset] |= mask;
       for (offset++; offset < TFS_BLOCKSIZE; offset++) {
         bitmap_blk[offset] = 0xff;
