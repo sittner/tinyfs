@@ -442,7 +442,7 @@ void tfs_format(void) {
   tfs_format_state(TFS_FORMAT_STATE_DONE);
 }
 
-void tfs_read_dir(DIR_ITEM_HANDLER handler) {
+void tfs_read_dir(uint8_t mux) {
   uint32_t pos = current_dir_blk;
   uint8_t i;
   TFS_DIR_ITEM *p;
@@ -458,7 +458,7 @@ void tfs_read_dir(DIR_ITEM_HANDLER handler) {
 
     // iterrate items
     for (i = 0, p = blk_buf.dir.items; i < TFS_DIR_BLK_ITEMS; i++, p++) {
-      handler(p);
+      tfs_dir_handler(mux, p);
     }
 
     // go to next block in chain

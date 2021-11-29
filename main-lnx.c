@@ -141,7 +141,7 @@ void tfs_format_progress(uint32_t pos, uint32_t max) {
   printf("  %u/%u\r", pos, max);
 }
 
-static void print_dir_item(const TFS_DIR_ITEM *item) {
+void tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
   switch (item->type) {
     case TFS_DIR_ITEM_DIR:
       dirs++;
@@ -218,7 +218,7 @@ int main(int argc, char **argv) {
       dirs = 0;
       files = 0;
       printf("size  name\n");
-      tfs_read_dir(print_dir_item);
+      tfs_read_dir(0);
       printf("%d dirs, %d files.\n", dirs, files);
       print_error();
       continue;

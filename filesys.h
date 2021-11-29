@@ -43,7 +43,11 @@ typedef struct {
 #define TFS_DIR_ITEM_DIR  1
 #define TFS_DIR_ITEM_FILE 2
 
-typedef void (*DIR_ITEM_HANDLER)(const TFS_DIR_ITEM *item);
+#define TFS_FORMAT_STATE_START        0
+#define TFS_FORMAT_STATE_BITMAP_START 1
+#define TFS_FORMAT_STATE_BITMAP_DONE  2
+#define TFS_FORMAT_STATE_ROOTDIR      3
+#define TFS_FORMAT_STATE_DONE         4
 
 extern TFS_DRIVE_INFO dev_info;
 extern uint8_t last_error;
@@ -55,17 +59,7 @@ void tfs_init(void);
 
 void tfs_format(void);
 
-#define TFS_FORMAT_STATE_START        0
-#define TFS_FORMAT_STATE_BITMAP_START 1
-#define TFS_FORMAT_STATE_BITMAP_DONE  2
-#define TFS_FORMAT_STATE_ROOTDIR      3
-#define TFS_FORMAT_STATE_DONE         4
-
-// user defined callbacks
-void tfs_format_state(uint8_t state);
-void tfs_format_progress(uint32_t pos, uint32_t max);
-
-void tfs_read_dir(DIR_ITEM_HANDLER handler);
+void tfs_read_dir(uint8_t mux);
 void tfs_change_dir(const char *name);
 void tfs_create_dir(const char *name);
 
@@ -73,5 +67,11 @@ void tfs_write_file(const char *name, const void *data, uint16_t len, uint8_t ov
 uint16_t tfs_read_file(const char *name, void *data, uint16_t max_len);
 
 void tfs_delete(const char *name);
+
+// user defined callbacks
+void tfs_format_state(uint8_t state);
+void tfs_format_progress(uint32_t pos, uint32_t max);
+
+void tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item);
 
 #endif
