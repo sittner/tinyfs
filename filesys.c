@@ -2,8 +2,6 @@
 
 #include <string.h>
 
-#include <stdio.h>
-
 // first bitmap block must start at 0 to simlify offset calculation
 #define TFS_FIRST_BITMAP_BLK 0
 #define TFS_ROOT_DIR_BLK     1
@@ -14,17 +12,6 @@ typedef struct {
 } __attribute__((packed)) TFS_DATA_BLK;
 
 #define TFS_DATA_LEN (TFS_BLOCKSIZE - sizeof(TFS_DATA_BLK))
-
-typedef struct {
-  uint32_t blk;
-  uint16_t size;
-  uint8_t type;
-  char name[TFS_NAME_LEN];
-} __attribute__((packed)) TFS_DIR_ITEM;
-
-#define TFS_DIR_ITEM_FREE 0
-#define TFS_DIR_ITEM_DIR  1
-#define TFS_DIR_ITEM_FILE 2
 
 typedef struct {
   uint32_t prev;
@@ -49,6 +36,7 @@ static const char *invalid_names[] = { "/", ".", "..", NULL };
 #define TFS_BITMAP_BLK_INVAL  0xffff
 #define TFS_BITMAP_BLK_COUNT  (TFS_BLOCKSIZE << 3)
 #define TFS_BITMAP_BLK_MASK   (TFS_BITMAP_BLK_COUNT - 1)
+#define TFS_BITMAP_BLK_SHIFT  (TFS_BLOCKSIZE_WIDTH + 3)
 
 #define GET_BITMAK_BLK(x) ((x) & ~TFS_BITMAP_BLK_MASK)
 
@@ -393,19 +381,20 @@ void tfs_format(void) {
   uint32_t pos;
   uint8_t mask, last;
   uint16_t offset;
+  uint32_t prog_max = last_bitmap_blk >> TFS_BITMAP_BLK_SHIFT;
 
-  printf("formating disk... please wait\n\n");
+  tfs_format_state(TFS_FORMAT_STATE_START);
 
   // write the bitmap-blocks
-  printf("writing bitmap-blocks:\n");
   // first block always in use (the bitmapblock itself)
   memset(&bitmap_blk, 0, TFS_BLOCKSIZE);
   bitmap_blk[0] = 1;
   pos = TFS_FIRST_BITMAP_BLK;
   last = 0;
+  tfs_format_state(TFS_FORMAT_STATE_BITMAP_START);
   while(1) {
     // print progress
-    printf("  pos: %u\r", pos);
+    tfs_format_progress(pos >> TFS_BITMAP_BLK_SHIFT, prog_max);
 
     if (pos == last_bitmap_blk) {
       last = 1;
@@ -426,7 +415,7 @@ void tfs_format(void) {
 
     // break on last block
     if (last) {
-      printf("\n");
+      tfs_format_state(TFS_FORMAT_STATE_BITMAP_DONE);
       break;
     }
 
@@ -440,7 +429,7 @@ void tfs_format(void) {
     return;
   }
 
-  printf("creating root-directory\n");
+  tfs_format_state(TFS_FORMAT_STATE_ROOTDIR);
 
   // alloc root dir block (should be block 3)
   pos = alloc_block();
@@ -460,18 +449,14 @@ void tfs_format(void) {
   // read back root directory
   init_dir();
 
-  printf("ok!\n");
+  tfs_format_state(TFS_FORMAT_STATE_DONE);
   last_error = TFS_ERR_OK;
 }
 
-void tfs_show_dir(void) {
+void tfs_read_dir(DIR_ITEM_HANDLER handler) {
   uint32_t pos = current_dir_blk;
   uint8_t i;
   TFS_DIR_ITEM *p;
-  uint16_t dirs = 0;
-  uint16_t files = 0;
-
-  printf("size  name\n");
 
   while (1) {
     // read current directory block
@@ -482,21 +467,7 @@ void tfs_show_dir(void) {
 
     // iterrate items
     for (i = 0, p = blk_buf.dir.items; i < TFS_DIR_BLK_ITEMS; i++, p++) {
-      // show sub directory item
-      if (p->type == TFS_DIR_ITEM_DIR) {
-        dirs++;
-        printf("<DIR> %s\n", p->name);
-        continue;
-      }
-
-      // show file item
-      if (p->type == TFS_DIR_ITEM_FILE) {
-        files++;
-        // IMPORTANT: format string must match TFS_NAME_LEN
-        // since name may not be null terminated
-        printf("%5u %.16s\n", p->size, p->name);
-        continue;
-      }
+      handler(p);
     }
 
     // go to next block in chain
@@ -506,7 +477,6 @@ void tfs_show_dir(void) {
     }
   }
 
-  printf("%u dirs, %u files.\n", dirs, files);
   last_error = TFS_ERR_OK;
 }
 

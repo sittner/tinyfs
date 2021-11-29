@@ -32,6 +32,19 @@ typedef struct {
 #define TFS_ERR_UNEXP_EOF    9
 #define TFS_ERR_NOT_EMPTY    10
 
+typedef struct {
+  uint32_t blk;
+  uint16_t size;
+  uint8_t type;
+  char name[TFS_NAME_LEN];
+} __attribute__((packed)) TFS_DIR_ITEM;
+
+#define TFS_DIR_ITEM_FREE 0
+#define TFS_DIR_ITEM_DIR  1
+#define TFS_DIR_ITEM_FILE 2
+
+typedef void (*DIR_ITEM_HANDLER)(const TFS_DIR_ITEM *item);
+
 extern TFS_DRIVE_INFO dev_info;
 extern uint8_t last_error;
 
@@ -42,7 +55,17 @@ void tfs_init(void);
 
 void tfs_format(void);
 
-void tfs_show_dir(void);
+#define TFS_FORMAT_STATE_START        0
+#define TFS_FORMAT_STATE_BITMAP_START 1
+#define TFS_FORMAT_STATE_BITMAP_DONE  2
+#define TFS_FORMAT_STATE_ROOTDIR      3
+#define TFS_FORMAT_STATE_DONE         4
+
+// user defined callbacks
+void tfs_format_state(uint8_t state);
+void tfs_format_progress(uint32_t pos, uint32_t max);
+
+void tfs_read_dir(DIR_ITEM_HANDLER handler);
 void tfs_change_dir(const char *name);
 void tfs_create_dir(const char *name);
 

@@ -96,7 +96,7 @@ typedef struct {
 } __attribute__((packed)) MMC_INFO_CSD;
 */
 
-char *split(char *s) {
+static char *split(char *s) {
   s = strchr(s, ' ');
   if (s != NULL) {
     *(s++) = 0;
@@ -104,13 +104,57 @@ char *split(char *s) {
   return s;
 }
 
-int print_error(void) {
+static int print_error(void) {
   if (last_error != TFS_ERR_OK) {
     printf("error %d.\n", last_error);
     return 1;
   }
 
   return 0;
+}
+
+static int dirs;
+static int files;
+
+void tfs_format_state(uint8_t state) {
+  switch (state) {
+    case TFS_FORMAT_STATE_START:
+      printf("formating disk, please wait...\n");
+      return;
+    case TFS_FORMAT_STATE_BITMAP_START:
+      printf("writing bitmap-blocks:\n");
+      return;
+    case TFS_FORMAT_STATE_BITMAP_DONE:
+      printf("\n");
+      return;
+    case TFS_FORMAT_STATE_ROOTDIR:
+      printf("creating root-directory.\n");
+      return;
+    case TFS_FORMAT_STATE_DONE:
+      printf("DONE!\n");
+      return;
+  }
+
+}
+
+void tfs_format_progress(uint32_t pos, uint32_t max) {
+  printf("  %u/%u\r", pos, max);
+}
+
+static void print_dir_item(const TFS_DIR_ITEM *item) {
+  switch (item->type) {
+    case TFS_DIR_ITEM_DIR:
+      dirs++;
+      printf("<DIR> %s\n", item->name);
+      return;
+
+    case TFS_DIR_ITEM_FILE:
+      files++;
+      // IMPORTANT: format string must match TFS_NAME_LEN
+      // since name may not be null terminated
+      printf("%5u %.16s\n", item->size, item->name);
+      return;
+  }
 }
 
 int main(void) {
@@ -132,6 +176,7 @@ int main(void) {
 
   while (1) {
     // read line from stdin
+    printf("> ");
     if ((len = getline(&cmd, &bufLen, stdin)) < 0) {
       fprintf(stderr, "Failed to read from stdin: error %d\n", errno);
       break;
@@ -143,6 +188,11 @@ int main(void) {
         cmd[len] = 0;
         break;
       }
+    }
+
+    // skip empty lines
+    if (cmd[0] == 0) {
+      continue;
     }
 
     // split command
@@ -160,7 +210,11 @@ int main(void) {
     }
 
     if (strcmp(cmd, "ls") == 0) {
-      tfs_show_dir();
+      dirs = 0;
+      files = 0;
+      printf("size  name\n");
+      tfs_read_dir(print_dir_item);
+      printf("%d dirs, %d files.\n", dirs, files);
       print_error();
       continue;
     }
