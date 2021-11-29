@@ -8,8 +8,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include "util.h"
-
 static int dev_fd;
 
 int dev_open(const char *dev) {
@@ -28,9 +26,9 @@ int dev_open(const char *dev) {
 
   if (S_ISREG(st.st_mode)) {
     printf("file (%lu)\n", st.st_size);
-    scopy(dev_info.model, "", DRIVE_INFO_MODEL_LEN);
-    scopy(dev_info.fw, "", DRIVE_INFO_FW_LEN);
-    scopy(dev_info.serno, "", DRIVE_INFO_SERNO_LEN);
+    strcpy(dev_info.model, "mmc-emu");
+    strcpy(dev_info.fw, "N/A");
+    strcpy(dev_info.serno, "N/A");
     dev_info.blk_count = st.st_size / TFS_BLOCKSIZE;
     return 0;
   }

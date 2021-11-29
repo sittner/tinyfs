@@ -1,5 +1,4 @@
 #include "filesys.h"
-#include "util.h"
 
 #include <string.h>
 
@@ -20,7 +19,7 @@ typedef struct {
   uint32_t blk;
   uint16_t size;
   uint8_t type;
-  char name[TFS_NAME_LEN + 1];
+  char name[TFS_NAME_LEN];
 } __attribute__((packed)) TFS_DIR_ITEM;
 
 #define TFS_DIR_ITEM_FREE 0
@@ -163,7 +162,7 @@ static void free_block(uint32_t pos) {
   // load corrosponding bitmap block
   tmp = GET_BITMAK_BLK(pos);
   if (loaded_bitmap_blk != tmp) {
-    load_bitmap(pos);
+    load_bitmap(tmp);
     if (last_error != TFS_ERR_OK) {
       return;
     }
@@ -308,7 +307,7 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
         }
       } else {
         // check filename
-        if (strcmp(name, p->name) == 0) {
+        if (strncmp(name, p->name, TFS_NAME_LEN) == 0) {
           last_error = TFS_ERR_OK;
           return p;
         }
@@ -493,7 +492,9 @@ void tfs_show_dir(void) {
       // show file item
       if (p->type == TFS_DIR_ITEM_FILE) {
         files++;
-        printf("%5u %s\n", p->size, p->name);
+        // IMPORTANT: format string must match TFS_NAME_LEN
+        // since name may not be null terminated
+        printf("%5u %.16s\n", p->size, p->name);
         continue;
       }
     }
@@ -583,7 +584,7 @@ void tfs_create_dir(const char *name) {
   item->type = TFS_DIR_ITEM_DIR;
   item->blk = new;
   item->size = 0;
-  scopy(item->name, name, TFS_NAME_LEN);
+  strncpy(item->name, name, TFS_NAME_LEN);
   dev_write_block(loaded_dir_blk, blk_buf.raw);
   if (last_error != TFS_ERR_OK) {
     return;
@@ -647,7 +648,7 @@ void tfs_write_file(const char *name, const void *data, uint16_t len, uint8_t ov
   item->type = TFS_DIR_ITEM_FILE;
   item->blk = pos;
   item->size = len;
-  scopy(item->name, name, TFS_NAME_LEN);
+  strncpy(item->name, name, TFS_NAME_LEN);
   dev_write_block(loaded_dir_blk, blk_buf.raw);
   if (last_error != TFS_ERR_OK) {
     return;

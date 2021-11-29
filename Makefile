@@ -1,5 +1,5 @@
 TARGET := fstest
-CSOURCES := main.c filesys.c util.c mmc-emu.c
+CSOURCES := main.c filesys.c mmc-emu.c
 HEADERS := 
 OBJECTS := $(patsubst %.c,%.o,$(CSOURCES))
 
