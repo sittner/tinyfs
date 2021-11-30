@@ -1,10 +1,10 @@
 TARGET := fstest
-CSOURCES := main-lnx.c filesys.c mmc-emu.c
-HEADERS := 
+CSOURCES := main.c ../filesys.c drive.c
+HEADERS := ../filesys.h drive.h
 OBJECTS := $(patsubst %.c,%.o,$(CSOURCES))
 
 CC = gcc
-CFLAGS = -Wall -g
+CFLAGS = -Wall -I.. -g
 LFLAGS =
 
 all: $(TARGET)
@@ -16,7 +16,7 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f *.o
+	rm -f $(OBJECTS)
 	rm -f $(TARGET)
 
 .PHONY: all clean

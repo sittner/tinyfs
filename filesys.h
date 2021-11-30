@@ -7,10 +7,16 @@
 #define DRIVE_INFO_FW_LEN 8
 #define DRIVE_INFO_SERNO_LEN 20
 
+#define DRIVE_TYPE_EMU  0
+#define DRIVE_TYPE_MMC  1
+#define DRIVE_TYPE_SDV1 2
+#define DRIVE_TYPE_SDV2 3
+#define DRIVE_TYPE_SDHC 4
+
 typedef struct {
   char model[DRIVE_INFO_MODEL_LEN + 1];
-  char fw[DRIVE_INFO_FW_LEN + 1];
   char serno[DRIVE_INFO_SERNO_LEN + 1];
+  uint8_t type;
   uint32_t blk_count;
 } TFS_DRIVE_INFO;
 
@@ -32,12 +38,18 @@ typedef struct {
 #define TFS_ERR_UNEXP_EOF    9
 #define TFS_ERR_NOT_EMPTY    10
 
+#ifdef __GNUC__
+  #define _PACKED __attribute__((packed))
+#else
+  #define _PACKED
+#endif
+
 typedef struct {
   uint32_t blk;
-  uint16_t size;
+  uint32_t size;
   uint8_t type;
   char name[TFS_NAME_LEN];
-} __attribute__((packed)) TFS_DIR_ITEM;
+} _PACKED TFS_DIR_ITEM;
 
 #define TFS_DIR_ITEM_FREE 0
 #define TFS_DIR_ITEM_DIR  1
@@ -49,11 +61,14 @@ typedef struct {
 #define TFS_FORMAT_STATE_ROOTDIR      3
 #define TFS_FORMAT_STATE_DONE         4
 
-extern TFS_DRIVE_INFO dev_info;
+extern TFS_DRIVE_INFO drive_info;
 extern uint8_t last_error;
 
-void dev_read_block(uint32_t blkno, void *data);
-void dev_write_block(uint32_t blkno, const void *data);
+// drive low level interface
+void drive_select();
+void drive_deselect();
+void drive_read_block(uint32_t blkno, uint8_t *data);
+void drive_write_block(uint32_t blkno, const uint8_t *data);
 
 void tfs_init(void);
 
@@ -63,8 +78,8 @@ void tfs_read_dir(uint8_t mux);
 void tfs_change_dir(const char *name);
 void tfs_create_dir(const char *name);
 
-void tfs_write_file(const char *name, const void *data, uint16_t len, uint8_t overwrite);
-uint16_t tfs_read_file(const char *name, void *data, uint16_t max_len);
+void tfs_write_file(const char *name, const uint8_t *data, uint32_t len, uint8_t overwrite);
+uint32_t tfs_read_file(const char *name, uint8_t *data, uint32_t max_len);
 
 void tfs_delete(const char *name);
 

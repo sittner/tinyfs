@@ -4,97 +4,7 @@
 #include <errno.h>
 
 #include "filesys.h"
-#include "mmc-emu.h"
-
-/*
-typedef struct {
-  uint8_t manu_id;
-  uint16_t oem_id;
-  uint8_t prod_name[5];
-  uint8_t prod_rev;
-  uint32_t prod_serno;
-  uint8_t reserved : 4;
-  uint8_t mfd_year : 8;
-  uint8_t mfd_month : 4;
-  uint8_t crc : 7;
-  uint8_t unused : 1;
-} __attribute__((packed)) MMC_INFO_CID;
-
-typedef struct {
-  uint8_t taac;
-  uint8_t nsac;
-  uint8_t tran_speed;
-  uint16_t ccc : 12;
-  uint8_t read_bl_len : 4;
-  uint8_t read_bl_partial : 1;
-  uint8_t write_blk_misalign : 1;
-  uint8_t read_blk_misalign : 1;
-  uint8_t dsr_imp : 1;
-  uint8_t reserved2 : 2;
-  uint16_t c_size : 12;
-  uint8_t vdd_r_curr_min : 3;
-  uint8_t vdd_r_curr_max : 3;
-  uint8_t vdd_w_curr_min : 3;
-  uint8_t vdd_w_curr_max : 3;
-  uint8_t c_size_mult : 3;
-  uint8_t erase_blk_en : 1;
-  uint8_t sector_size : 7;
-  uint8_t wp_grp_size : 7;
-  uint8_t wp_grp_enable : 1;
-  uint8_t reserved3 : 2;
-  uint8_t r2w_factor : 3;
-  uint8_t write_bl_len : 4;
-  uint8_t write_bl_partial : 1;
-  uint8_t reserved4 : 5;
-  uint8_t file_format_grp : 1;
-  uint8_t copy : 1;
-  uint8_t perm_write_protect : 1;
-  uint8_t temp_write_protect : 1;
-  uint8_t file_format : 2;
-  uint8_t reserved5 : 2;
-} __attribute__((packed)) MMC_INFO_CSD_V1;
-
-typedef struct {
-  uint8_t taac;
-  uint8_t nsac;
-  uint8_t tran_speed;
-  uint16_t ccc : 12;
-  uint8_t read_bl_len : 4;
-  uint8_t read_bl_partial : 1;
-  uint8_t write_blk_misalign : 1;
-  uint8_t read_blk_misalign : 1;
-  uint8_t dsr_imp : 1;
-  uint8_t reserved1 : 6;
-  uint32_t c_size : 22;
-  uint8_t reserved2 : 1;
-  uint8_t erase_blk_en : 1;
-  uint8_t sector_size : 7;
-  uint8_t wp_grp_size : 7;
-  uint8_t wp_grp_enable : 1;
-  uint8_t reserved3 : 2;
-  uint8_t r2w_factor : 3;
-  uint8_t write_bl_len : 4;
-  uint8_t write_bl_partial : 1;
-  uint8_t reserved4 : 5;
-  uint8_t file_format_grp : 1;
-  uint8_t copy : 1;
-  uint8_t perm_write_protect : 1;
-  uint8_t temp_write_protect : 1;
-  uint8_t file_format : 2;
-  uint8_t reserved5 : 2;
-} __attribute__((packed)) MMC_INFO_CSD_V2;
-
-typedef struct {
-  uint8_t csd_struct : 2;
-  uint8_t reserved : 6;
-  union {
-    MMC_INFO_CSD_V1 v1;
-    MMC_INFO_CSD_V2 v2;
-  };
-  uint8_t crc : 7;
-  uint8_t unused : 1;
-} __attribute__((packed)) MMC_INFO_CSD;
-*/
+#include "drive.h"
 
 static char *split(char *s) {
   s = strchr(s, ' ');
@@ -112,9 +22,6 @@ static int print_error(void) {
 
   return 0;
 }
-
-static int dirs;
-static int files;
 
 void tfs_format_state(uint8_t state) {
   switch (state) {
@@ -141,21 +48,26 @@ void tfs_format_progress(uint32_t pos, uint32_t max) {
   printf("  %u/%u\r", pos, max);
 }
 
+static int dirs;
+static int files;
+
 void tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
+  // IMPORTANT: format string must match TFS_NAME_LEN
+  // since name may not be null terminated
   switch (item->type) {
     case TFS_DIR_ITEM_DIR:
       dirs++;
-      printf("<DIR> %s\n", item->name);
+      printf("     <DIR> %.16s\n", item->name);
       return;
 
     case TFS_DIR_ITEM_FILE:
       files++;
-      // IMPORTANT: format string must match TFS_NAME_LEN
-      // since name may not be null terminated
-      printf("%5u %.16s\n", item->size, item->name);
+      printf("%10u %.16s\n", item->size, item->name);
       return;
   }
 }
+
+static uint8_t fileBuf[256 * 1024 * 1024];
 
 int main(int argc, char **argv) {
   char *cmd = NULL;
@@ -163,7 +75,6 @@ int main(int argc, char **argv) {
   ssize_t len = 0;
   char *params;
   char *fname;
-  uint8_t fileBuf[0xffff];
   size_t fileLen;
   FILE *filePtr;
 
@@ -172,7 +83,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if (dev_open(argv[1]) < 0) {
+  if (drive_open(argv[1]) < 0) {
     fprintf(stderr, "Failed open device (error %d).\n", errno);
     return 1;
   }
@@ -217,7 +128,7 @@ int main(int argc, char **argv) {
     if (strcmp(cmd, "ls") == 0) {
       dirs = 0;
       files = 0;
-      printf("size  name\n");
+      printf("      size name\n");
       tfs_read_dir(0);
       printf("%d dirs, %d files.\n", dirs, files);
       print_error();
@@ -293,7 +204,7 @@ int main(int argc, char **argv) {
   }
 
   free(cmd);
-  dev_close();
+  drive_close();
 
   return 0;
 }
