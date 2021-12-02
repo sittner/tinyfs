@@ -3,8 +3,8 @@ NAME := fstest
 HEX := $(NAME).hex
 OUT := $(NAME).out
 MAP := $(NAME).map
-SOURCES := main.c ../filesys.c ../mmc.c spi.c uart.c
-HEADERS := ../filesys.h ../mmc.h uart.h
+SOURCES := main.c filesys.c mmc.c spi.c uart.c
+HEADERS := filesys.h mmc.h uart.h
 OBJECTS := $(patsubst %.c,%.o,$(SOURCES))
 
 MCU := atmega328p
@@ -16,7 +16,7 @@ OBJCOPY := avr-objcopy
 SIZE := avr-size -A
 DOXYGEN := doxygen
 
-CFLAGS := -Wall -I.. -pedantic -mmcu=$(MCU) -std=c99 -g -Os -DF_CPU=$(MCU_FREQ)
+CFLAGS := -Wall -pedantic -mmcu=$(MCU) -std=c99 -g -Os -DF_CPU=$(MCU_FREQ)
 
 all: $(HEX)
 

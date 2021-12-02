@@ -1,4 +1,14 @@
 *.img
 *.o
 fstest
+*.out
+*.asm
+*.lst
+*.sym
+*.rel
+*.map
+*.noi
+*.lk
+*.hex
+*.bin
 

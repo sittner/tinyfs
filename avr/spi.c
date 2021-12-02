@@ -1,3 +1,4 @@
+#include "spi.h"
 #include "mmc.h"
 
 #include <avr/io.h>

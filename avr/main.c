@@ -4,6 +4,7 @@
 
 #include "filesys.h"
 #include "mmc.h"
+#include "spi.h"
 #include "uart.h"
 
 #include <string.h>
