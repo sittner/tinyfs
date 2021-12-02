@@ -41,20 +41,20 @@ char term_buf[TERM_BUFFER_SIZE];
 
 void term_clrscrn() {
 __asm
-        ld hl,(D_FILE_ADR)
-        dec hl
-        ld a,#24
-00001$: inc hl
-        inc hl
-        ld d,h
-        ld e,l
-        inc de
-        ld bc,#31
-        ld (hl),#0
-        ldir
-        dec a
-        jr nz,00001$
-
+  ld hl,(D_FILE_ADR)
+  dec hl
+  ld a,#24
+00001$:
+  inc hl
+  inc hl
+  ld d,h
+  ld e,l
+  inc de
+  ld bc,#31
+  ld (hl),#0
+  ldir
+  dec a
+  jr nz,00001$
 __endasm;
 }
 
@@ -87,37 +87,39 @@ void term_putul(uint32_t v) {
 
 uint16_t term_get_key(void) {
 __asm
-        push ix
+  push ix
 
-        ld a,(CDFLAG_ADR)   ; save CDFLAG
-        push af
+  ld a,(CDFLAG_ADR)    ; save CDFLAG
+  push af
 
-        call _ROM_SLOW       ; force slow mode
+  call _ROM_SLOW       ; force slow mode
 
-00001$: ld hl,(LAST_K_ADR)  ; wait for key
-        ld a,h
-        and a,h
-	cp #0xff
-        jp z,00001$
+00001$:
+  ld hl,(LAST_K_ADR)   ; wait for key
+  ld a,h
+  and a,h
+  cp #0xff
+  jp z,00001$
 
-        push hl              ; remember key code
+  push hl              ; remember key code
 
-00002$: ld hl,(LAST_K_ADR)  ; wait for key release
-        ld a,h
-        and a,h
-	cp #0xff
-        jp nz,00002$
+00002$:
+  ld hl,(LAST_K_ADR)   ; wait for key release
+  ld a,h
+  and a,h
+  cp #0xff
+  jp nz,00002$
 
-        call _ROM_FAST       ; force fast mode
+  call _ROM_FAST       ; force fast mode
 
-        pop hl               ; recall key code
+  pop hl               ; recall key code
 
-        pop af               ; restore CDFLAG
-        ld (CDFLAG_ADR),a
+  pop af               ; restore CDFLAG
+  ld (CDFLAG_ADR),a
 
-        pop ix
+  pop ix
 
-        ret;
+  ret;
 __endasm;
 }
 
