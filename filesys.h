@@ -27,16 +27,14 @@ typedef struct {
 #define TFS_BLOCKSIZE       (1 << TFS_BLOCKSIZE_WIDTH)
 
 #define TFS_ERR_OK           0
-#define TFS_ERR_DISK_FULL    1
-#define TFS_ERR_FILE_EXIST   2
-#define TFS_ERR_DIR_EXIST    3
+#define TFS_ERR_IO           1
+#define TFS_ERR_DISK_FULL    2
+#define TFS_ERR_FILE_EXIST   3
 #define TFS_ERR_NOT_EXIST    4
-#define TFS_ERR_CHECKSUM     5
-#define TFS_ERR_IO           6
-#define TFS_ERR_NO_NAME      7
-#define TFS_ERR_NAME_INVAL   8
-#define TFS_ERR_UNEXP_EOF    9
-#define TFS_ERR_NOT_EMPTY    10
+#define TFS_ERR_NOT_EMPTY    5
+#define TFS_ERR_NO_NAME      6
+#define TFS_ERR_NAME_INVAL   7
+#define TFS_ERR_UNEXP_EOF    8
 
 #ifdef __GNUC__
   #define _PACKED __attribute__((packed))
@@ -54,12 +52,6 @@ typedef struct {
 #define TFS_DIR_ITEM_FREE 0
 #define TFS_DIR_ITEM_DIR  1
 #define TFS_DIR_ITEM_FILE 2
-
-#define TFS_FORMAT_STATE_START        0
-#define TFS_FORMAT_STATE_BITMAP_START 1
-#define TFS_FORMAT_STATE_BITMAP_DONE  2
-#define TFS_FORMAT_STATE_ROOTDIR      3
-#define TFS_FORMAT_STATE_DONE         4
 
 extern TFS_DRIVE_INFO drive_info;
 extern uint8_t last_error;
@@ -84,9 +76,6 @@ uint32_t tfs_read_file(const char *name, uint8_t *data, uint32_t max_len);
 void tfs_delete(const char *name);
 
 // user defined callbacks
-void tfs_format_state(uint8_t state);
-void tfs_format_progress(uint32_t pos, uint32_t max);
-
-void tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item);
+uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item);
 
 #endif

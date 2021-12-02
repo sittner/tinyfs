@@ -653,7 +653,7 @@ L01FC:	inc	HL		;
 ;
 			
 ;; SLOW/FAST
-OS_AFTER_PATCH:
+_ROM_AFTER_PATCH:
 L0207:	ld	HL,#0x403B	; Address the system variable CDFLAG.
 	ld	A,(HL)		; Load value to the accumulator.
 	rla			; rotate bit 6 to position 7.
@@ -989,7 +989,7 @@ L02E7:	bit	7,0x3B(IY)	; sv CDFLAG
 ; --------------
 			
 ;; REPORT-F
-OS_REPORT_F:
+_ROM_REPORT_F:
 L02F4:	rst	#0x08		; ERROR-1
 	.db	0x0E		; Error Report: No Program Name supplied.
 			
@@ -1001,7 +1001,7 @@ L02F4:	rst	#0x08		; ERROR-1
 			
 ;; SAVE
 L02F6:	jp	save_patch
-OS_SAVE_CONT:
+_ROM_SAVE_CONT:
 	jr	C,L02F4		; back with null name to REPORT-F above.
 			
 	ex	DE,HL		;
@@ -1093,7 +1093,7 @@ L0340:	jp	load_patch
 			
 ; DE points to start of name in RAM.
 			
-OS_LOAD_CONT:
+_ROM_LOAD_CONT:
 	rl	D		; pick up carry
 	rrc	D		; carry now in bit 7.
 			
@@ -1231,7 +1231,7 @@ L03A6:	rst	#0x08		; ERROR-1
 ;
 			
 ;; NAME
-OS_GET_FILENAME:
+_ROM_GET_FILENAME:
 L03A8:	call	L0F55		; routine SCANNING
 	ld	A,(0x4001)	; sv FLAGS
 	add	A,A		;
@@ -1342,7 +1342,7 @@ L03E5:	ld	HL,(0x4004)	; fetch system variable RAMTOP.
 	ld	B,#0x19		; prepare minimal screen of 24 NEWLINEs
 				; following an initial NEWLINE.
 ; <<<<
-OS_INIT_CONT:			
+_ROM_INIT_CONT:
 ;; LINE
 L0408:	ld	(HL),#0x76	; insert NEWLINE (HALT instruction)
 	inc	HL		; point to next location.
@@ -4385,7 +4385,7 @@ L0F21:	rst	#0x08		; ERROR-1
 ;
 			
 ;; FAST
-OS_FAST:
+_ROM_FAST:
 L0F23:	call	L02E7		; routine SET-FAST
 	res	6,0x3B(IY)	; sv CDFLAG
 	ret			; return.
@@ -4397,7 +4397,7 @@ L0F23:	call	L02E7		; routine SET-FAST
 ;
 			
 ;; SLOW
-OS_SLOW:
+_ROM_SLOW:
 L0F2B:	set	6,0x3B(IY)	; sv CDFLAG
 	jp	L0207		; to SLOW/FAST
 			

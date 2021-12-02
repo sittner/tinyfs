@@ -21,9 +21,19 @@
 
 	.module crt0
 
+	.globl	_ROM_AFTER_PATCH
+	.globl	_ROM_REPORT_F
+	.globl	_ROM_SAVE_CONT
+	.globl	_ROM_LOAD_CONT
+	.globl	_ROM_GET_FILENAME
+	.globl	_ROM_INIT_CONT
+	.globl	_ROM_FAST
+	.globl	_ROM_SLOW
+
 	.globl	_init
 	.globl	_save
 	.globl	_load
+	.globl	_show_error
 
 	.area	_HEADER (ABS)
 
@@ -71,11 +81,11 @@ init_patch:
 	POP af
 
 	; continue with init
-	jp OS_INIT_CONT
+	jp _ROM_INIT_CONT
 
 save_patch:
 	; get filename
-	call OS_GET_FILENAME
+	call _ROM_GET_FILENAME
 	jp c,save_tape
 	push af
 
@@ -90,17 +100,18 @@ save_patch:
 	push hl
 	push ix
 
-	push de
 	call _save
+
+	call _show_error
 	jp exit_to_os
 
 save_tape:
 	pop af
-	jp OS_SAVE_CONT
+	jp _ROM_SAVE_CONT
 
 load_patch:
 	; get filename
-	call OS_GET_FILENAME
+	call _ROM_GET_FILENAME
 	jp c,load_tape
 	push af
 
@@ -115,21 +126,31 @@ load_patch:
 	push hl
 	push ix
 
-	push de
 	call _load
+	call _show_error
 	jp exit_to_os
 
 load_tape:
 	pop af
-	jp OS_SAVE_CONT
+	jp _ROM_SAVE_CONT
 
 exit_to_os:
 	pop ix
 	pop hl
 	pop de
 	pop bc
+
+	ld a,(_last_error)
+	cp #0
+	jp z,exit_ok
+
+exit_failed:
 	pop af
-	jp OS_AFTER_PATCH
+	jp _ROM_REPORT_F
+
+exit_ok:
+	pop af
+	jp _ROM_AFTER_PATCH
 
 	.area   _GSINIT
 

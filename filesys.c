@@ -32,7 +32,7 @@ typedef union {
 TFS_DRIVE_INFO drive_info;
 uint8_t last_error;
 
-static const char *invalid_names[] = { "/", ".", "..", NULL };
+static const char *invalid_names[] = { "", "/", ".", NULL };
 
 #define TFS_BITMAP_BLK_INVAL  0xffff
 #define TFS_BITMAP_BLK_COUNT  (TFS_BLOCKSIZE << 3)
@@ -369,10 +369,8 @@ void tfs_format(void) {
   uint32_t pos;
   uint8_t mask, last;
   uint16_t offset;
-  uint32_t prog_max = last_bitmap_blk >> TFS_BITMAP_BLK_SHIFT;
 
   last_error = TFS_ERR_OK;
-  tfs_format_state(TFS_FORMAT_STATE_START);
   drive_select();
 
   // write the bitmap-blocks
@@ -381,11 +379,7 @@ void tfs_format(void) {
   bitmap_blk[0] = 1;
   pos = TFS_FIRST_BITMAP_BLK;
   last = 0;
-  tfs_format_state(TFS_FORMAT_STATE_BITMAP_START);
   while(1) {
-    // print progress
-    tfs_format_progress(pos >> TFS_BITMAP_BLK_SHIFT, prog_max);
-
     if (pos == last_bitmap_blk) {
       last = 1;
       // mark all blocks after end of disk as used
@@ -405,7 +399,6 @@ void tfs_format(void) {
 
     // break on last block
     if (last) {
-      tfs_format_state(TFS_FORMAT_STATE_BITMAP_DONE);
       break;
     }
 
@@ -418,8 +411,6 @@ void tfs_format(void) {
   if (last_error != TFS_ERR_OK) {
     goto out;
   }
-
-  tfs_format_state(TFS_FORMAT_STATE_ROOTDIR);
 
   // alloc root dir block (should be block 3)
   pos = alloc_block();
@@ -441,7 +432,6 @@ void tfs_format(void) {
 
 out:
   drive_deselect();
-  tfs_format_state(TFS_FORMAT_STATE_DONE);
 }
 
 void tfs_read_dir(uint8_t mux) {
@@ -461,7 +451,9 @@ void tfs_read_dir(uint8_t mux) {
 
     // iterrate items
     for (i = 0, p = blk_buf.dir.items; i < TFS_DIR_BLK_ITEMS; i++, p++) {
-      tfs_dir_handler(mux, p);
+      if (!tfs_dir_handler(mux, p)) {
+        goto out;
+      }
     }
 
     // go to next block in chain
@@ -487,7 +479,7 @@ void tfs_change_dir(const char *name) {
   }
 
   // go to parent dir
-  if (strcmp(name, "..") == 0) {
+  if (strcmp(name, ".") == 0) {
     drive_read_block(current_dir_blk, blk_buf.raw);
     if (last_error != TFS_ERR_OK) {
       goto out;
@@ -540,7 +532,7 @@ void tfs_create_dir(const char *name) {
 
   // directory already exists?
   if (item->type != TFS_DIR_ITEM_FREE) {
-    last_error = TFS_ERR_DIR_EXIST;
+    last_error = TFS_ERR_FILE_EXIST;
     goto out;
   }
 
