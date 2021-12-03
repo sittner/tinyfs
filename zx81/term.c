@@ -4,7 +4,6 @@
 
 #define D_FILE_ADR 16396
 #define LAST_K_ADR 16421
-#define CDFLAG_ADR 16443
 
 static volatile uint8_t * __at D_FILE_ADR D_FILE;
 
@@ -89,9 +88,6 @@ uint16_t term_get_key(void) {
 __asm
   push ix
 
-  ld a,(CDFLAG_ADR)    ; save CDFLAG
-  push af
-
   call _ROM_SLOW       ; force slow mode
 
 00001$:
@@ -113,9 +109,6 @@ __asm
   call _ROM_FAST       ; force fast mode
 
   pop hl               ; recall key code
-
-  pop af               ; restore CDFLAG
-  ld (CDFLAG_ADR),a
 
   pop ix
 

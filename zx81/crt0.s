@@ -21,6 +21,8 @@
 
 	.module crt0
 
+CDFLAG_ADR .equ 16443
+
 	.globl	_ROM_AFTER_PATCH
 	.globl	_ROM_REPORT_F
 	.globl	_ROM_SAVE_CONT
@@ -100,6 +102,13 @@ save_patch:
 	push hl
 	push ix
 
+	; save CDFLAG
+	ld a,(CDFLAG_ADR)
+	push af
+
+	; force fast mode
+	call _ROM_FAST
+
 	call _save
 
 	call _show_error
@@ -126,6 +135,13 @@ load_patch:
 	push hl
 	push ix
 
+	; save CDFLAG
+	ld a,(CDFLAG_ADR)
+	push af
+
+	; force fast mode
+	call _ROM_FAST
+
 	call _load
 	call _show_error
 	jp exit_to_os
@@ -135,6 +151,10 @@ load_tape:
 	jp _ROM_SAVE_CONT
 
 exit_to_os:
+	; restore CDFLAG
+	pop af
+	ld (CDFLAG_ADR),a
+
 	pop ix
 	pop hl
 	pop de
