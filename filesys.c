@@ -258,7 +258,7 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
   for (c = invalid_prefix; *c != 0; c++) {
     if (*name == *c) {
       last_error = TFS_ERR_NAME_INVAL;
-      return;
+      return NULL;
     }
   }
 
@@ -429,6 +429,41 @@ void tfs_format(void) {
 
 out:
   drive_deselect();
+}
+
+uint32_t tfs_get_used(void) {
+  uint32_t pos, used;
+  uint16_t i;
+  uint8_t *p;
+  uint8_t mask;
+
+  pos = TFS_FIRST_BITMAP_BLK;
+  used = 0;
+  while (1) {
+    // load bitmap block
+    load_bitmap(pos);
+    if (last_error != TFS_ERR_OK) {
+      return 0;
+    }
+
+    // count allocated blocks
+    for (i = 0, p = bitmap_blk; i < TFS_BLOCKSIZE; i++, p++) {
+      for (mask = 1; mask != 0; mask <<= 1) {
+        if ((*p & mask) != 0) {
+          used++;
+        }
+      }
+    }
+
+    // check for end of list
+    if (pos == last_bitmap_blk) {
+      load_bitmap(TFS_FIRST_BITMAP_BLK);
+      return used;
+    }
+
+    // next block
+    pos += TFS_BITMAP_BLK_COUNT;
+  }
 }
 
 void tfs_read_dir(uint8_t mux) {
@@ -779,6 +814,44 @@ void tfs_delete(const char *name) {
   }
 
   last_error = TFS_ERR_NOT_EXIST;
+out:
+  drive_deselect();
+}
+
+void tfs_rename(const char *from, const char *to) {
+  TFS_DIR_ITEM *item;
+
+  last_error = TFS_ERR_OK;
+  drive_select();
+
+  // check if 'to name' already exists
+  item = find_file(to, 0);
+  if (last_error != TFS_ERR_OK) {
+    goto out;
+  }
+
+  // file already exists?
+  if (item != NULL) {
+    last_error = TFS_ERR_FILE_EXIST;
+    goto out;
+  }
+
+  // find 'from name' item
+  item = find_file(from, 0);
+  if (last_error != TFS_ERR_OK) {
+    goto out;
+  }
+
+  // file not exists?
+  if (item == NULL) {
+    last_error = TFS_ERR_NOT_EXIST;
+    goto out;
+  }
+
+  // update item
+  strncpy(item->name, to, TFS_NAME_LEN);
+  drive_write_block(loaded_dir_blk, blk_buf.raw);
+
 out:
   drive_deselect();
 }

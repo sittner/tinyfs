@@ -67,6 +67,8 @@ void tfs_init(void);
 
 void tfs_format(void);
 
+uint32_t tfs_get_used(void);
+
 void tfs_read_dir(uint8_t mux);
 void tfs_change_dir(const char *name);
 void tfs_create_dir(const char *name);
@@ -75,6 +77,7 @@ void tfs_write_file(const char *name, const uint8_t *data, uint32_t len, uint8_t
 uint32_t tfs_read_file(const char *name, uint8_t *data, uint32_t max_len);
 
 void tfs_delete(const char *name);
+void tfs_rename(const char *from, const char *to);
 
 // user defined callbacks
 uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item);
