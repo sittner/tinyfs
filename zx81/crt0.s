@@ -106,8 +106,10 @@ save_patch:
 	ld a,(CDFLAG_ADR)
 	push af
 
-	; force fast mode
-	call _ROM_FAST
+	; we need FAST mode, since sdcc is using IX
+	; however the save/last routines are actually
+	; called in FAST mode, so this switch is not necessary
+	;call _ROM_FAST
 
 	call _save
 
@@ -139,8 +141,10 @@ load_patch:
 	ld a,(CDFLAG_ADR)
 	push af
 
-	; force fast mode
-	call _ROM_FAST
+	; we need FAST mode, since sdcc is using IX
+	; however the save/last routines are actually
+	; called in FAST mode, so this switch is not necessary
+	;call _ROM_FAST
 
 	call _load
 	call _show_error
