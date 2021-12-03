@@ -32,7 +32,7 @@ typedef union {
 TFS_DRIVE_INFO drive_info;
 uint8_t last_error;
 
-static const char *invalid_names[] = { "", "/", ".", NULL };
+static const char invalid_prefix[] = { '/', '.', '=', '<', '$', '?', 0 };
 
 #define TFS_BITMAP_BLK_INVAL  0xffff
 #define TFS_BITMAP_BLK_COUNT  (TFS_BLOCKSIZE << 3)
@@ -51,24 +51,12 @@ static uint32_t loaded_dir_blk;
 
 static TFS_BLK_BUFFER blk_buf;
 
-static void check_name(const char *name);
 static void load_bitmap(uint32_t pos);
 static uint32_t alloc_block(void);
 static void free_block(uint32_t pos);
 static void free_file_blocks(uint32_t pos);
 static void write_dir_cleanup(void);
 static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item);
-
-static void check_name(const char *name) {
-  const char **p;
-
-  for (p = invalid_names; *p != NULL; p++) {
-    if (strcmp(name, *p) == 0) {
-      last_error = TFS_ERR_NAME_INVAL;
-      return;
-    }
-  }
-}
 
 static void load_bitmap(uint32_t pos) {
   drive_read_block(pos, bitmap_blk);
@@ -254,6 +242,7 @@ static void write_dir_cleanup(void) {
 
 static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
   uint32_t pos = current_dir_blk;
+  const char *c;
   uint8_t i;
   TFS_DIR_ITEM *p;
   uint32_t free_blk = 0;
@@ -263,6 +252,14 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
   if (*name == 0) {
     last_error = TFS_ERR_NO_NAME;
     return NULL;
+  }
+
+  // check for invalid prefix
+  for (c = invalid_prefix; *c != 0; c++) {
+    if (*name == *c) {
+      last_error = TFS_ERR_NAME_INVAL;
+      return;
+    }
   }
 
   while (1) {
@@ -515,13 +512,6 @@ void tfs_create_dir(const char *name) {
   uint32_t new;
 
   last_error = TFS_ERR_OK;
-
-  // check for invalid name
-  check_name(name);
-  if (last_error != TFS_ERR_OK) {
-    goto out;
-  }
-
   drive_select();
 
   // check for name
@@ -568,13 +558,6 @@ void tfs_write_file(const char *name, const uint8_t *data, uint32_t len, uint8_t
   uint16_t blk_len;
 
   last_error = TFS_ERR_OK;
-
-  // check for invalid name
-  check_name(name);
-  if (last_error != TFS_ERR_OK) {
-    goto out;
-  }
-
   drive_select();
 
   // check for name

@@ -45,6 +45,7 @@ void init(void) {
 *** syntax:
 *** SAVE ":[FILENAME]"      - save file FILENAME
 *** SAVE ":/[DIRNAME]"      - create dir DIRNAME
+*** *SAVE ":=[OLD]:[NEW]"    - rename file [OLD] to [NEW]
 *** SAVE ":<[FILENAME]"     - delete file [FILENAME]
 *** SAVE ":$"               - format disk
 ***
@@ -81,7 +82,7 @@ void save(uint8_t *name) {
 ***
 *** syntax:
 *** LOAD ":[FILENAME]" - load file FILENAME
-*** LOAD "::"          - show drive info
+*** LOAD ":?"          - show drive info
 *** LOAD ":"           - show current dir
 *** LOAD "://"         - change to root dir
 *** LOAD ":/."         - change to parent dir
@@ -107,7 +108,7 @@ void load(uint8_t *name) {
       term_puts("dirs: "); term_putul(dir_dirs);
       return;
 
-    case ':':
+    case '?':
       show_drive_info();
       return;
 
