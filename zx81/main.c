@@ -45,9 +45,8 @@ void init(void) {
 *** syntax:
 *** SAVE ":[FILENAME]"      - save file FILENAME
 *** SAVE ":/[DIRNAME]"      - create dir DIRNAME
-*** >SAVE ":$R:[OLD]:[NEW]" - rename file [OLD] to [NEW]
 *** SAVE ":<[FILENAME]"     - delete file [FILENAME]
-*** >SAVE ":$FORMAT"         - format disk
+*** SAVE ":$"               - format disk
 ***
 **********************************************************/
 void save(uint8_t *name) {
@@ -67,7 +66,7 @@ void save(uint8_t *name) {
       tfs_delete(&name[2]);
       return;
 
-    case '>': // TODO
+    case '$':
       tfs_format();
       return;
 
@@ -82,7 +81,7 @@ void save(uint8_t *name) {
 ***
 *** syntax:
 *** LOAD ":[FILENAME]" - load file FILENAME
-*** LOAD ":$"          - show drive info
+*** LOAD "::"          - show drive info
 *** LOAD ":"           - show current dir
 *** LOAD "://"         - change to root dir
 *** LOAD ":/."         - change to parent dir
@@ -108,7 +107,7 @@ void load(uint8_t *name) {
       term_puts("dirs: "); term_putul(dir_dirs);
       return;
 
-    case '$':
+    case ':':
       show_drive_info();
       return;
 
