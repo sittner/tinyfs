@@ -46,12 +46,14 @@ void init(void) {
 *** syntax:
 *** SAVE ":[FILENAME]"      - save file FILENAME
 *** SAVE ":/[DIRNAME]"      - create dir DIRNAME
-*** *SAVE ":=[OLD]:[NEW]"    - rename file [OLD] to [NEW]
+*** SAVE ":=[OLD]:[NEW]"    - rename file [OLD] to [NEW]
 *** SAVE ":<[FILENAME]"     - delete file [FILENAME]
 *** SAVE ":$"               - format disk
 ***
 **********************************************************/
 void save(uint8_t *name) {
+  char *p;
+
   if (!init_ok) {
     last_error = TFS_ERR_NO_DEV;
     return;
@@ -59,13 +61,24 @@ void save(uint8_t *name) {
 
   term_zx2ascii(name);
 
-  switch (name[1]) {
+  switch (term_buf[1]) {
     case '/':
-      tfs_create_dir(&name[2]);
+      tfs_create_dir(&term_buf[2]);
+      return;
+
+    case '=':
+      p = strchr(&term_buf[2], ':');
+      if (p == NULL) {
+        last_error = TFS_ERR_NO_NAME;
+        return;
+      }
+
+      *(p++) = 0;
+      tfs_rename(&term_buf[2], p);
       return;
 
     case '<':
-      tfs_delete(&name[2]);
+      tfs_delete(&term_buf[2]);
       return;
 
     case '$':
@@ -98,7 +111,7 @@ void load(uint8_t *name) {
 
   term_zx2ascii(name);
 
-  switch (name[1]) {
+  switch (term_buf[1]) {
     case 0:
       print_dir_header();
       dir_files = 0;
@@ -114,11 +127,11 @@ void load(uint8_t *name) {
       return;
 
     case '/':
-      tfs_change_dir(&name[2]);
+      tfs_change_dir(&term_buf[2]);
       return;
 
     default:
-      tfs_read_file(&name[1], &VERSN, MAX_FILESIZE);
+      tfs_read_file(&term_buf[1], &VERSN, MAX_FILESIZE);
       return;
    }
 }
@@ -187,13 +200,17 @@ static void show_drive_info(void) {
   term_pos(0, 1);
   term_puts("serno: ");
   term_puts(drive_info.serno);
-
+/*
   term_pos(0, 2);
   term_puts("type: ");
   term_putul(drive_info.type);
-
-  term_pos(0, 3);
+*/
+  term_pos(0, 2);
   term_puts("blocks: ");
   term_putul(drive_info.blk_count);
+
+  term_pos(0, 3);
+  term_puts("used: ");
+  term_putul(tfs_get_used());
 }
 

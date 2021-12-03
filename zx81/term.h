@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define TERM_BUFFER_SIZE 21
+#define TERM_BUFFER_SIZE 48
 
 #define TERM_KEY_Z      (~(0x0001 << 0) & ~(0x0100 << 2))
 #define TERM_KEY_X      (~(0x0001 << 0) & ~(0x0100 << 3))
