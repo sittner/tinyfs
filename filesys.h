@@ -27,14 +27,15 @@ typedef struct {
 #define TFS_BLOCKSIZE       (1 << TFS_BLOCKSIZE_WIDTH)
 
 #define TFS_ERR_OK           0
-#define TFS_ERR_IO           1
-#define TFS_ERR_DISK_FULL    2
-#define TFS_ERR_FILE_EXIST   3
-#define TFS_ERR_NOT_EXIST    4
-#define TFS_ERR_NOT_EMPTY    5
-#define TFS_ERR_NO_NAME      6
-#define TFS_ERR_NAME_INVAL   7
-#define TFS_ERR_UNEXP_EOF    8
+#define TFS_ERR_NO_DEV       1
+#define TFS_ERR_IO           2
+#define TFS_ERR_DISK_FULL    3
+#define TFS_ERR_FILE_EXIST   4
+#define TFS_ERR_NOT_EXIST    5
+#define TFS_ERR_NOT_EMPTY    6
+#define TFS_ERR_NO_NAME      7
+#define TFS_ERR_NAME_INVAL   8
+#define TFS_ERR_UNEXP_EOF    9
 
 #ifdef __GNUC__
   #define _PACKED __attribute__((packed))

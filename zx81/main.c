@@ -11,6 +11,7 @@ static volatile uint8_t   __at 16393 VERSN;
 static volatile uint8_t * __at 16404 E_LINE;
 
 static const char const *error_msg[] = {
+  "no sd card",
   "io error",
   "disk full",
   "file allready exists",
@@ -52,7 +53,7 @@ void init(void) {
 **********************************************************/
 void save(uint8_t *name) {
   if (!init_ok) {
-    last_error = TFS_ERR_IO;
+    last_error = TFS_ERR_NO_DEV;
     return;
   }
 
@@ -91,7 +92,7 @@ void save(uint8_t *name) {
 **********************************************************/
 void load(uint8_t *name) {
   if (!init_ok) {
-    last_error = TFS_ERR_IO;
+    last_error = TFS_ERR_NO_DEV;
     return;
   }
 
