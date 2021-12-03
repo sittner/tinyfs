@@ -1,7 +1,9 @@
-NAME := fstest
+NAME := zxsd
 HEX := $(NAME).hex
 MAP := $(NAME).map
 BIN := $(NAME).bin
+ROM := $(NAME)-rom.bin
+ROMHEX := $(NAME)-rom.hex
 ASOURCES := crt0.s
 CSOURCES := main.c filesys.c mmc.c term.c spi.c
 HEADERS := filesys.h mmc.h term.h
@@ -16,7 +18,7 @@ MFLAGS := -mz80 --opt-code-size --reserve-regs-iy --constseg CONST
 CFLAGS := -DLITTLE_ENDIAN=1
 LFLAGS := --code-loc 0x2000 --data-loc 0xc000 "-Wl-b _CONST = 0x8000" --no-std-crt0
 
-all: $(BIN) showmem
+all: $(ROMHEX) showmem
 
 %.rel: %.c $(HEADERS)
 	$(CC) $(MFLAGS) $(CFLAGS) -c -o $@ $<
@@ -35,15 +37,19 @@ showmem: $(MAP)
 	@echo
 
 $(BIN): $(HEX)
-	sdobjcopy -I ihex -O binary $< $@.tmp
-	dd if=$@.tmp of=$@ bs=1024 count=16
-	dd if=$@.tmp of=$@ bs=1024 count=16 seek=16 skip=32
-	rm -f $@.tmp
+	sdobjcopy -I ihex -O binary $< $@
+
+$(ROM): $(BIN)
+	dd status=none if=$< of=$@ bs=1024 count=16
+	dd status=none if=$< of=$@ bs=1024 count=16 seek=16 skip=32
+
+$(ROMHEX): $(ROM)
+	sdobjcopy -I binary -O ihex $< $@
 
 clean:
 	rm -f *.asm *.rel *.lst *.sym
 	rm -f *.lk *.noi
-	rm -f $(HEX) $(MAP) $(BIN)
+	rm -f $(HEX) $(MAP) $(BIN) $(ROM) $(ROMHEX)
 
 .PHONY: all clean showmem
 

@@ -5,6 +5,9 @@
 #define D_FILE_ADR 16396
 #define LAST_K_ADR 16421
 
+// do not warn about missing return value on assembler functions
+#pragma disable_warning 59
+
 static volatile uint8_t * __at D_FILE_ADR D_FILE;
 
 // table mapping ascii (7-bit) to ZX81 char set
@@ -115,7 +118,6 @@ __asm
   ret;
 __endasm;
 }
-
 
 void term_zx2ascii(const uint8_t *in) {
   uint8_t i;
