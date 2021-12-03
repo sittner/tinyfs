@@ -44,9 +44,11 @@ CDFLAG_ADR .equ 16443
 	;; Ordering of segments for the linker.
 	.area	_HOME
 	.area	_CODE
-	.area	_INITIALIZER
 	.area   _GSINIT
 	.area   _GSFINAL
+
+	.area	_CONST
+	.area	_INITIALIZER
 
 	.area	_DATA
 	.area	_INITIALIZED

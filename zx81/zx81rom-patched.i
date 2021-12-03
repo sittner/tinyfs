@@ -23,7 +23,7 @@
 ;** Part 1. RESTART ROUTINES AND TABLES **
 ;*****************************************
 			
-	.org	0x0000	
+	.org	0x0000
 			
 ; -----------
 ; THE 'START'
