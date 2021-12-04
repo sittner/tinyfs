@@ -156,12 +156,17 @@ uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
 
   (void) mux; // keep compiler happy
 
-  if (item->type == TFS_DIR_ITEM_DIR) {
-    dir_dirs++;
-    term_puts("     <DIR>");
-  } else {
-    dir_files++;
-    term_putul(item->size);
+  switch (item->type) {
+    case TFS_DIR_ITEM_DIR:
+      dir_dirs++;
+      term_puts("     <DIR>");
+      break;
+    case TFS_DIR_ITEM_FILE:
+      dir_files++;
+      term_putul(item->size);
+      break;
+    default:
+      return 1;
   }
 
   term_putc(' ');
