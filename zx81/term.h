@@ -49,7 +49,7 @@ extern char term_buf[];
 
 void term_clrscrn();
 
-void term_putc(int c);
+void term_putc(char c);
 void term_puts(const char *s);
 void term_putsn(const char *s, uint8_t max_len);
 void term_putul(uint32_t v);

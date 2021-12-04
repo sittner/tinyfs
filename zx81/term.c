@@ -11,8 +11,11 @@
 static volatile uint8_t * __at D_FILE_ADR D_FILE;
 
 // table mapping ascii (7-bit) to ZX81 char set
-// starts from space (32)
-static const uint8_t ascii2zx[96] = {
+static const uint8_t ascii2zx[] = {
+  00, 00, 00, 00, 00, 00, 00, 00,
+  00, 00, 00, 00, 00, 00, 00, 00,
+  00, 00, 00, 00, 00, 00, 00, 00,
+  00, 00, 00, 00, 00, 00, 00, 00,
   00, 00, 11, 12, 13, 00, 00, 11,
   16, 17, 23, 21, 26, 22, 27, 24,
   28, 29, 30, 31, 32, 33, 34, 35,
@@ -27,7 +30,7 @@ static const uint8_t ascii2zx[96] = {
   61, 62, 63, 16, 24, 17, 11, 00
 };
 
-static const char zx2ascii[128 + 1] =
+static const char zx2ascii[] =
   "           \"@$:?" //   0 -  15
   "()><=+-*/;,.0123"  //  16 -  31
   "456789abcdefghij"  //  32 -  47
@@ -64,18 +67,14 @@ __asm
 __endasm;
 }
 
-void term_putc(int c) {
+void term_putc(char c) {
   if (c == '\n') {
     pos += 33 - pos_x;
     pos_x = 0;
     return;
   }
 
-  c = (c & 0x7f) - ' ';
-  if (c < 0) {
-    c = 0;
-  }
-  *(pos++) = ascii2zx[c];
+  *(pos++) = ascii2zx[c & 0x7f];
   pos_x++;
 }
 
