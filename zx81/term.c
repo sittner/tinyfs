@@ -38,10 +38,14 @@ static const char zx2ascii[128 + 1] =
   "                "; // 112 - 127
 
 static uint8_t *pos;
+static uint8_t pos_x;
 
 char term_buf[TERM_BUFFER_SIZE];
 
 void term_clrscrn() {
+  pos = D_FILE + 1;
+  pos_x = 0;
+
 __asm
   ld hl,(D_FILE_ADR)
   dec hl
@@ -60,16 +64,19 @@ __asm
 __endasm;
 }
 
-void term_pos(uint8_t x, uint8_t y) {
-  pos = D_FILE + 1 + (y * 33) + x;
-}
-
 void term_putc(int c) {
+  if (c == '\n') {
+    pos += 33 - pos_x;
+    pos_x = 0;
+    return;
+  }
+
   c = (c & 0x7f) - ' ';
   if (c < 0) {
     c = 0;
   }
   *(pos++) = ascii2zx[c];
+  pos_x++;
 }
 
 void term_puts(const char *s) {
@@ -114,8 +121,6 @@ __asm
   pop hl               ; recall key code
 
   pop ix
-
-  ret;
 __endasm;
 }
 

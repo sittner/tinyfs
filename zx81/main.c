@@ -117,7 +117,6 @@ void load(uint8_t *name) {
       dir_files = 0;
       dir_dirs = 0;
       tfs_read_dir(0);
-      term_pos(0, dir_line);
       term_puts("files: "); term_putul(dir_files);
       term_puts("dirs: "); term_putul(dir_dirs);
       return;
@@ -142,14 +141,13 @@ void show_error() {
   }
 
   term_clrscrn();
-  term_pos(8, 23);
+  term_puts("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n        ");
   term_puts(error_msg[last_error - 1]);
 }
 
 static void print_dir_header(void) {
   term_clrscrn();
-  term_pos(0, 0);
-  term_puts("      size name");
+  term_puts("      size name\n");
   dir_line = 1;
 }
 
@@ -158,7 +156,6 @@ uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
 
   (void) mux; // keep compiler happy
 
-  term_pos(0, dir_line);
   if (item->type == TFS_DIR_ITEM_DIR) {
     dir_dirs++;
     term_puts("     <DIR>");
@@ -169,11 +166,11 @@ uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
 
   term_putc(' ');
   term_putsn(item->name, TFS_NAME_LEN);
+  term_putc('\n');
 
   // wait on page end
   dir_line++;
   if (dir_line >= 21) {
-    term_pos(0, 21);
     term_puts("<NL> = next page  <SPACE> = end");
     while (1) {
       key = term_get_key();
@@ -193,24 +190,19 @@ uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
 static void show_drive_info(void) {
   term_clrscrn();
 
-  term_pos(0, 0);
   term_puts("model: ");
   term_puts(drive_info.model);
 
-  term_pos(0, 1);
-  term_puts("serno: ");
+  term_puts("\nserno: ");
   term_puts(drive_info.serno);
-/*
-  term_pos(0, 2);
-  term_puts("type: ");
+
+  term_puts("\ntype: ");
   term_putul(drive_info.type);
-*/
-  term_pos(0, 2);
-  term_puts("blocks: ");
+
+  term_puts("\nblocks: ");
   term_putul(drive_info.blk_count);
 
-  term_pos(0, 3);
-  term_puts("used: ");
+  term_puts("\nused: ");
   term_putul(tfs_get_used());
 }
 
