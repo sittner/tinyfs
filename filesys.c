@@ -437,12 +437,16 @@ uint32_t tfs_get_used(void) {
   uint8_t *p;
   uint8_t mask;
 
+  last_error = TFS_ERR_OK;
+  drive_select();
+
   pos = TFS_FIRST_BITMAP_BLK;
   used = 0;
   while (1) {
     // load bitmap block
     load_bitmap(pos);
     if (last_error != TFS_ERR_OK) {
+      drive_deselect();
       return 0;
     }
 
@@ -458,6 +462,7 @@ uint32_t tfs_get_used(void) {
     // check for end of list
     if (pos == last_bitmap_blk) {
       load_bitmap(TFS_FIRST_BITMAP_BLK);
+      drive_deselect();
       return used;
     }
 
