@@ -32,6 +32,7 @@ static void print_dir_header(void);
 static void show_drive_info(void);
 
 void init(void) {
+  spi_deselect_drive();
   init_ok = drive_init();
   if (!init_ok) {
     return;
