@@ -47,7 +47,7 @@ CDFLAG_ADR .equ 16443
 	.area   _GSINIT
 	.area   _GSFINAL
 
-	.area	_CONST
+	.area	_CDATA
 	.area	_INITIALIZER
 
 	.area	_DATA
