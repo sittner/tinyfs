@@ -110,6 +110,10 @@ static uint8_t wait_byte(uint8_t val);
 static uint8_t send_command(uint8_t command, uint32_t arg);
 static uint8_t get_info(void);
 
+// macro to skip n byted from spi
+// 'uint8_t b;' needs to be defined in calling function
+#define skip_bytes(n) for (b = 0; b < n; b++) spi_rec_byte()
+
 uint8_t drive_init(void) {
   uint8_t b;
   uint8_t resp;
@@ -119,9 +123,7 @@ uint8_t drive_init(void) {
   drive_info.type = DRIVE_TYPE_MMC;
     
   // card needs 74 cycles minimum to start up
-  for (b = 0; b < 10; b++) {
-    spi_rec_byte();
-  }
+  skip_bytes(10);
 
   // address card
   drive_select();
@@ -202,12 +204,8 @@ uint8_t drive_init(void) {
       drive_info.type = DRIVE_TYPE_SDHC;
     }
 
-    // receive bit 16-23
-    spi_rec_byte();
-    // receive bit 8-15
-    spi_rec_byte();
-    // receive bit 0-7
-    spi_rec_byte();
+    // receive bit 16-0
+    skip_bytes(3);
   }
 
   // set block size to 512 bytes
@@ -242,9 +240,7 @@ void drive_deselect(void) {
   spi_deselect_drive();
 
   // Create 80 clock pulse after releasing the card
-  for (b = 0; b < 10; b++) {
-    spi_rec_byte();
-  }
+  skip_bytes(10);
 }
 
 static char hex_char(uint8_t val) {
@@ -388,11 +384,9 @@ static uint8_t get_info(void) {
   manuf = spi_rec_byte();
   spi_rec_byte();
   spi_rec_byte();
-    *(model++) = spi_rec_byte();
-    *(model++) = spi_rec_byte();
-    *(model++) = spi_rec_byte();
-    *(model++) = spi_rec_byte();
-    *(model++) = spi_rec_byte();
+    for (b = 0; b < 5; b++) {
+      *(model++) = spi_rec_byte();
+    }
     *(model++) = ' ';
     *(model++) = 'M';
     *(model++) = 'F';
@@ -426,9 +420,7 @@ static uint8_t get_info(void) {
     *(model++) = '/';
     *(model++) = hex_char(b);
     *(model++) = 0;
-  spi_rec_byte();
-  spi_rec_byte();
-  spi_rec_byte();
+  skip_bytes(3);
 
   // read csd register
   if(send_command(CMD_SEND_CSD, 0)) {
@@ -440,10 +432,7 @@ static uint8_t get_info(void) {
   }
 
   csd_structure = spi_rec_byte() >> 6;
-  spi_rec_byte();
-  spi_rec_byte();
-  spi_rec_byte();
-  spi_rec_byte();
+  skip_bytes(4);
 
   if (csd_structure == 0x01) {
     spi_rec_byte();
@@ -465,13 +454,7 @@ static uint8_t get_info(void) {
     csd_c_size <<= csd_c_size_mult + csd_read_bl_len + 2;
     drive_info.blk_count = csd_c_size >> TFS_BLOCKSIZE_WIDTH;
   }
-  spi_rec_byte();
-  spi_rec_byte();
-  spi_rec_byte();
-  spi_rec_byte();
-  spi_rec_byte();
-  spi_rec_byte();
-  spi_rec_byte();
+  skip_bytes(7);
 
   return 1;
 }
