@@ -7,6 +7,10 @@
 #include "drive.h"
 
 static char *split(char *s) {
+  if (s == NULL) {
+    return NULL;
+  }
+
   s = strchr(s, ' ');
   if (s != NULL) {
     *(s++) = 0;
@@ -23,48 +27,25 @@ static int print_error(void) {
   return 0;
 }
 
-void tfs_format_state(uint8_t state) {
-  switch (state) {
-    case TFS_FORMAT_STATE_START:
-      printf("formating disk, please wait...\n");
-      return;
-    case TFS_FORMAT_STATE_BITMAP_START:
-      printf("writing bitmap-blocks:\n");
-      return;
-    case TFS_FORMAT_STATE_BITMAP_DONE:
-      printf("\n");
-      return;
-    case TFS_FORMAT_STATE_ROOTDIR:
-      printf("creating root-directory.\n");
-      return;
-    case TFS_FORMAT_STATE_DONE:
-      printf("DONE!\n");
-      return;
-  }
-
-}
-
-void tfs_format_progress(uint32_t pos, uint32_t max) {
-  printf("  %u/%u\r", pos, max);
-}
-
 static int dirs;
 static int files;
 
-void tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
+uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
   // IMPORTANT: format string must match TFS_NAME_LEN
   // since name may not be null terminated
   switch (item->type) {
     case TFS_DIR_ITEM_DIR:
       dirs++;
       printf("     <DIR> %.16s\n", item->name);
-      return;
+      break;
 
     case TFS_DIR_ITEM_FILE:
       files++;
       printf("%10u %.16s\n", item->size, item->name);
-      return;
+      break;
   }
+
+  return 1;
 }
 
 static uint8_t fileBuf[256 * 1024 * 1024];
@@ -76,6 +57,7 @@ int main(int argc, char **argv) {
   char *params;
   char *fname;
   size_t fileLen;
+  uint32_t used;
   FILE *filePtr;
 
   if (argc != 2) {
@@ -149,6 +131,27 @@ int main(int argc, char **argv) {
 
     if (strcmp(cmd, "rm") == 0) {
       tfs_delete(params);
+      print_error();
+      continue;
+    }
+
+    if (strcmp(cmd, "du") == 0) {
+      used = tfs_get_used();
+      if (print_error()) {
+        continue;
+      }
+      printf("blocks used: %u/%u\n", used, drive_info.blk_count);
+      continue;
+    }
+
+    if (strcmp(cmd, "mv") == 0) {
+      fname = split(params);
+      if (fname == NULL || fname[0] == 0 || params[0] == 0) {
+        printf("usage: mv <old name> <new name>\n");
+        continue;
+      }
+
+      tfs_rename(params, fname);
       print_error();
       continue;
     }

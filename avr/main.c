@@ -46,6 +46,10 @@ static uint8_t read_line(char* buffer, uint8_t buffer_length) {
 }
 
 static char *split(char *s) {
+  if (s == NULL) {
+    return NULL;
+  }
+
   s = strchr(s, ' ');
   if (s != NULL) {
     *(s++) = 0;
@@ -65,39 +69,10 @@ static int print_error(void) {
   return 0;
 }
 
-void tfs_format_state(uint8_t state) {
-  switch (state) {
-    case TFS_FORMAT_STATE_START:
-      uart_puts_p(PSTR("formating disk, please wait...\n"));
-      return;
-    case TFS_FORMAT_STATE_BITMAP_START:
-      uart_puts_p(PSTR("writing bitmap-blocks:\n"));
-      return;
-    case TFS_FORMAT_STATE_BITMAP_DONE:
-      uart_puts_p(PSTR("\n"));
-      return;
-    case TFS_FORMAT_STATE_ROOTDIR:
-      uart_puts_p(PSTR("creating root-directory.\n"));
-      return;
-    case TFS_FORMAT_STATE_DONE:
-      uart_puts_p(PSTR("DONE!\n"));
-      return;
-  }
-}
-
-void tfs_format_progress(uint32_t pos, uint32_t max) {
-  uart_putc(' ');
-  uart_putc(' ');
-  uart_putdw_dec(pos);
-  uart_putc('/');
-  uart_putdw_dec(max);
-  uart_putc('\r');
-}
-
 static uint16_t dirs;
 static uint16_t files;
 
-void tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
+uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
   uint32_t w = item->size;
   uint32_t num = 1000000000;
   uint8_t started = 0;
@@ -126,7 +101,7 @@ void tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
       break;
 
     default:
-      return;
+      return 1;
   }
 
   // print name
@@ -135,12 +110,16 @@ void tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
     uart_putc(*c);
   }
   uart_putc('\n');
+
+  return 1;
 }
 
 int main(void) {
   char cmd[128];
   uint8_t len;
   char *params;
+  char *fname;
+  uint32_t used;
 
   // we will just use ordinary idle mode */
   set_sleep_mode(SLEEP_MODE_IDLE);
@@ -229,6 +208,31 @@ int main(void) {
 
     if (strcmp(cmd, "rm") == 0) {
       tfs_delete(params);
+      print_error();
+      continue;
+    }
+
+    if (strcmp(cmd, "du") == 0) {
+      used = tfs_get_used();
+      if (print_error()) {
+        continue;
+      }
+      uart_puts_p(PSTR("blocks used: "));
+      uart_putdw_dec(used);
+      uart_putc('/');
+      uart_putdw_dec(drive_info.blk_count);
+      uart_putc('\n');
+      continue;
+    }
+
+    if (strcmp(cmd, "mv") == 0) {
+      fname = split(params);
+      if (fname == NULL || fname[0] == 0 || params[0] == 0) {
+        uart_puts_p(PSTR("usage: mv <old name> <new name>\n"));
+        continue;
+      }
+
+      tfs_rename(params, fname);
       print_error();
       continue;
     }
