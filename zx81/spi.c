@@ -21,7 +21,6 @@ __asm
   ld a, 4(ix)
   out (0xef), a
   nop
-  nop
   in a, (0xef)
   ld l, a
 __endasm;
