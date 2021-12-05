@@ -362,6 +362,7 @@ out:
   drive_deselect();
 }
 
+#ifndef TFS_NO_FORMAT
 void tfs_format(void) {
   uint32_t pos;
   uint8_t mask, last;
@@ -430,6 +431,7 @@ void tfs_format(void) {
 out:
   drive_deselect();
 }
+#endif
 
 uint32_t tfs_get_used(void) {
   uint32_t pos, used;

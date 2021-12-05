@@ -82,9 +82,11 @@ void save(uint8_t *name) {
       tfs_delete(&term_buf[2]);
       return;
 
+#ifndef TFS_NO_FORMAT
     case '$':
       tfs_format();
       return;
+#endif
 
     default:
       tfs_write_file(&name[1], &VERSN, E_LINE - &VERSN + 1, 1);

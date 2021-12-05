@@ -65,7 +65,9 @@ void drive_write_block(uint32_t blkno, const uint8_t *data);
 
 void tfs_init(void);
 
+#ifndef TFS_NO_FORMAT
 void tfs_format(void);
+#endif
 
 uint32_t tfs_get_used(void);
 
