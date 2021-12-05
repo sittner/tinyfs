@@ -71,7 +71,7 @@ void tfs_format(void);
 
 uint32_t tfs_get_used(void);
 
-void tfs_read_dir(uint8_t mux);
+uint8_t tfs_read_dir(uint8_t mux);
 void tfs_change_dir(const char *name);
 void tfs_create_dir(const char *name);
 

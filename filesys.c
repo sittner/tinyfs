@@ -473,9 +473,10 @@ uint32_t tfs_get_used(void) {
   }
 }
 
-void tfs_read_dir(uint8_t mux) {
+uint8_t tfs_read_dir(uint8_t mux) {
   uint32_t pos = current_dir_blk;
   uint8_t i;
+  uint8_t done = 0;
   TFS_DIR_ITEM *p;
 
   last_error = TFS_ERR_OK;
@@ -498,11 +499,13 @@ void tfs_read_dir(uint8_t mux) {
     // go to next block in chain
     pos = blk_buf.dir.next;
     if (pos == 0) {
+      done = 1;
       break;
     }
   }
 out:
   drive_deselect();
+  return done;
 }
 
 void tfs_change_dir(const char *name) {

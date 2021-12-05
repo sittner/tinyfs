@@ -119,9 +119,10 @@ void load(uint8_t *name) {
       print_dir_header();
       dir_files = 0;
       dir_dirs = 0;
-      tfs_read_dir(0);
-      term_puts("files: "); term_putul(dir_files);
-      term_puts(" dirs: "); term_putul(dir_dirs);
+      if (tfs_read_dir(0)) {
+        term_puts("files: "); term_putul(dir_files);
+        term_puts(" dirs: "); term_putul(dir_dirs);
+      }
       return;
 
     case '?':
@@ -187,6 +188,7 @@ uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
         break;
       }
       if (key == TERM_KEY_SPC) {
+        term_clrscrn();
         return 0;
       }
     }
