@@ -89,8 +89,26 @@ void term_putsn(const char *s, uint8_t max_len) {
 }
 
 void term_putul(uint32_t v) {
-  __ultoa(v, term_buf, 10);
-  term_puts(term_buf);
+  term_putul_aligned(v, 0);
+}
+
+void term_putul_aligned(uint32_t v, uint8_t size) {
+  char *p = term_buf + TERM_BUFFER_SIZE;
+  uint8_t len = 0;
+  *(--p) = 0;
+
+  do {
+    *(--p) = '0' + (v % 10);
+    v /= 10;
+    len++;
+  } while (v);
+
+  while (len < size) {
+    *(--p) = ' ';
+    len++;
+  }
+
+  term_puts(p);
 }
 
 uint16_t term_get_key(void) {

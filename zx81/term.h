@@ -53,6 +53,7 @@ void term_putc(char c);
 void term_puts(const char *s);
 void term_putsn(const char *s, uint8_t max_len);
 void term_putul(uint32_t v);
+void term_putul_aligned(uint32_t v, uint8_t size);
 
 uint16_t term_get_key(void);
 

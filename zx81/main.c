@@ -121,7 +121,7 @@ void load(uint8_t *name) {
       dir_dirs = 0;
       tfs_read_dir(0);
       term_puts("files: "); term_putul(dir_files);
-      term_puts("dirs: "); term_putul(dir_dirs);
+      term_puts(" dirs: "); term_putul(dir_dirs);
       return;
 
     case '?':
@@ -166,7 +166,7 @@ uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
       break;
     case TFS_DIR_ITEM_FILE:
       dir_files++;
-      term_putul(item->size);
+      term_putul_aligned(item->size, 10);
       break;
     default:
       return 1;
@@ -210,6 +210,7 @@ static void show_drive_info(void) {
   term_puts("\nblocks: ");
   term_putul(drive_info.blk_count);
 
+  // BUG?
   term_puts("\nused: ");
   term_putul(tfs_get_used());
 }
