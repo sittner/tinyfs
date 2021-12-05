@@ -113,6 +113,8 @@ save_patch:
 	; called in FAST mode, so this switch is not necessary
 	;call _ROM_FAST
 
+	; push DE on stack -> filename for save function
+	push de
 	call _save
 
 	call _show_error
@@ -148,7 +150,10 @@ load_patch:
 	; called in FAST mode, so this switch is not necessary
 	;call _ROM_FAST
 
+	; push DE on stack -> filename for load function
+	push de
 	call _load
+
 	call _show_error
 	jp exit_to_os
 
