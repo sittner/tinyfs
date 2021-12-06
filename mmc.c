@@ -107,7 +107,7 @@ static uint8_t wait_byte(uint8_t val);
 static uint8_t send_command(uint8_t command, uint32_t arg);
 static uint8_t get_info(void);
 
-static uint8_t tmp_buf[16];
+static uint8_t tmp_buf[18];
 
 uint8_t drive_init(void) {
   uint8_t resp;
@@ -358,7 +358,7 @@ static uint8_t get_info(void) {
     return 0;
   }
 
-  spi_read_block(tmp_buf, 16);
+  spi_read_block(tmp_buf, 18);
   p = tmp_buf;
 
   manuf = *(p++);
@@ -402,7 +402,7 @@ static uint8_t get_info(void) {
     return 0;
   }
 
-  spi_read_block(tmp_buf, 16);
+  spi_read_block(tmp_buf, 18);
   p = tmp_buf;
 
   csd_structure = *(p++) >> 6;

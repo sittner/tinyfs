@@ -73,11 +73,25 @@ void spi_deselect_drive(void) {
 
 uint8_t spi_transfer_byte(uint8_t b) {
   SPDR = b;
-
-  // wait for byte to be shifted out
-  while(!(SPSR & (1 << SPIF)));
+  while (!(SPSR & (1 << SPIF)));
   SPSR &= ~(1 << SPIF);
-
   return SPDR;
+}
+
+void spi_read_block(uint8_t *data, uint16_t len) {
+  for (; len > 0; len--, data++) {
+    SPDR = 0xff;
+    while (!(SPSR & (1 << SPIF)));
+    SPSR &= ~(1 << SPIF);
+    *data = SPDR;
+  }
+}
+
+void spi_write_block(const uint8_t *data, uint16_t len) {
+  for (; len > 0; len--, data++) {
+    SPDR = *data;
+    while (!(SPSR & (1 << SPIF)));
+    SPSR &= ~(1 << SPIF);
+  }
 }
 
