@@ -37,7 +37,7 @@ static uint16_t dir_dirs;
 
 static void print_dir_header(void);
 
-static void show_drive_info(void);
+static void show_drive_info(uint8_t show_used);
 
 void init(void) {
   spi_deselect_drive();
@@ -54,9 +54,9 @@ void init(void) {
 ***
 *** syntax:
 *** SAVE ":[FILENAME]"      - save file FILENAME
-*** SAVE ":/[DIRNAME]"      - create dir DIRNAME
+*** SAVE ":>[DIRNAME]"      - create dir DIRNAME
 *** SAVE ":=[OLD]:[NEW]"    - rename file [OLD] to [NEW]
-*** SAVE ":<[FILENAME]"     - delete file [FILENAME]
+*** SAVE ":-[FILENAME]"     - delete file [FILENAME]
 *** SAVE ":$"               - format disk
 ***
 **********************************************************/
@@ -71,7 +71,7 @@ void save(uint8_t *name) {
   term_zx2ascii(name);
 
   switch (term_buf[1]) {
-    case '/':
+    case '>':
       tfs_create_dir(&term_buf[2]);
       return;
 
@@ -86,18 +86,27 @@ void save(uint8_t *name) {
       tfs_rename(&term_buf[2], p);
       return;
 
-    case '<':
+    case '-':
       tfs_delete(&term_buf[2]);
       return;
 
-#ifndef TFS_NO_FORMAT
     case '$':
+#ifndef TFS_NO_FORMAT
       tfs_format();
       return;
 #endif
 
+    // forbid load prefixes
+    case '?':
+    case '*':
+    case ':':
+    case '<':
+      last_error = TFS_ERR_NAME_INVAL;
+      return;
+
+
     default:
-      tfs_write_file(&name[1], &VERSN, E_LINE - &VERSN + 1, 1);
+      tfs_write_file(&term_buf[1], &VERSN, E_LINE - &VERSN + 1, 1);
       return;
    }
 }
@@ -108,10 +117,11 @@ void save(uint8_t *name) {
 *** syntax:
 *** LOAD ":[FILENAME]" - load file FILENAME
 *** LOAD ":?"          - show drive info
+*** LOAD ":*"          - show drive info with used blocks
 *** LOAD ":"           - show current dir
-*** LOAD "://"         - change to root dir
-*** LOAD ":/."         - change to parent dir
-*** LOAD ":/[DIRNAME]" - change to DIRNAME
+*** LOAD "::"          - change to root dir
+*** LOAD ":<"          - change to parent dir
+*** LOAD ":>[DIRNAME]" - change to DIRNAME
 ***
 **********************************************************/
 void load(uint8_t *name) {
@@ -134,10 +144,22 @@ void load(uint8_t *name) {
       return;
 
     case '?':
-      show_drive_info();
+      show_drive_info(0);
       return;
 
-    case '/':
+    case '*':
+      show_drive_info(1);
+      return;
+
+    case ':':
+      tfs_change_dir("/");
+      return;
+
+    case '<':
+      tfs_change_dir("..");
+      return;
+
+    case '>':
       tfs_change_dir(&term_buf[2]);
       return;
 
@@ -205,23 +227,24 @@ uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
   return 1;
 }
 
-static void show_drive_info(void) {
+static void show_drive_info(uint8_t show_used) {
   term_clrscrn();
 
-  term_puts("model: ");
+  term_puts(" model: ");
   term_puts(drive_info.model);
 
-  term_puts("\nserno: ");
+  term_puts("\n serno: ");
   term_puts(drive_info.serno);
 
-  term_puts("\ntype: ");
+  term_puts("\n  type: ");
   term_puts(drive_types[drive_info.type]);
 
   term_puts("\nblocks: ");
   term_putul(drive_info.blk_count);
 
-  // BUG?
-  term_puts("\nused: ");
-  term_putul(tfs_get_used());
+  if (show_used) {
+    term_puts("\n  used: ");
+    term_putul(tfs_get_used());
+  }
 }
 

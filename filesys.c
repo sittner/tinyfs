@@ -32,7 +32,7 @@ typedef union {
 TFS_DRIVE_INFO drive_info;
 uint8_t last_error;
 
-static const char invalid_prefix[] = { '/', '.', '=', '<', '$', '?', 0 };
+static const char *invalid_names[] = { "/", "..", NULL };
 
 #define TFS_BITMAP_BLK_INVAL  0xffff
 #define TFS_BITMAP_BLK_COUNT  (TFS_BLOCKSIZE << 3)
@@ -242,7 +242,7 @@ static void write_dir_cleanup(void) {
 
 static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
   uint32_t pos = current_dir_blk;
-  const char *c;
+  const char * const *inval;
   uint8_t i;
   TFS_DIR_ITEM *p;
   uint32_t free_blk = 0;
@@ -255,8 +255,8 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
   }
 
   // check for invalid prefix
-  for (c = invalid_prefix; *c != 0; c++) {
-    if (*name == *c) {
+  for (inval = invalid_names; *inval != NULL; inval++) {
+    if (strcmp(name, *inval) == 0) {
       last_error = TFS_ERR_NAME_INVAL;
       return NULL;
     }
@@ -521,7 +521,7 @@ void tfs_change_dir(const char *name) {
   }
 
   // go to parent dir
-  if (strcmp(name, ".") == 0) {
+  if (strcmp(name, "..") == 0) {
     drive_read_block(current_dir_blk, blk_buf.raw);
     if (last_error != TFS_ERR_OK) {
       goto out;
