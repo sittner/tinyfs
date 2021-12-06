@@ -19,7 +19,15 @@ static const char const *error_msg[] = {
   "dir not empty",
   "no filename",
   "invalid filename",
-  "unexp. eof",
+  "unexp. eof"
+};
+
+static const char const *drive_types[] = {
+  "emulated disk",
+  "mmc card",
+  "sd card v1",
+  "sd card v2",
+  "sdhc card"
 };
 
 static uint8_t init_ok;
@@ -207,7 +215,7 @@ static void show_drive_info(void) {
   term_puts(drive_info.serno);
 
   term_puts("\ntype: ");
-  term_putul(drive_info.type);
+  term_puts(drive_types[drive_info.type]);
 
   term_puts("\nblocks: ");
   term_putul(drive_info.blk_count);
