@@ -26,3 +26,48 @@ __asm
 __endasm;
 }
 
+void spi_read_block(uint8_t *data, uint16_t len) {
+__asm
+  ld c, 6 (ix)
+  ld b, 7 (ix)
+  ld e, 4 (ix)
+  ld d, 5 (ix)
+00001$:
+  ld a, b
+  or a, c
+  jr Z, 00002$
+
+  ld a, #0xff
+  out (0xef), a
+  nop
+  in a, (0xef)
+  ld (de), a
+
+  dec bc
+  inc de
+  jr 00001$
+00002$:
+__endasm;
+}
+
+void spi_write_block(const uint8_t *data, uint16_t len) {
+__asm
+  ld c, 6 (ix)
+  ld b, 7 (ix)
+  ld e, 4 (ix)
+  ld d, 5 (ix)
+00001$:
+  ld a, b
+  or a, c
+  jr Z, 00002$
+
+  ld a,(de)
+  out (0xef), a
+
+  dec bc
+  inc de
+  jr 00001$
+00002$:
+__endasm;
+}
+

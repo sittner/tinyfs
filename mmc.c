@@ -101,21 +101,15 @@
 
 #define TIMEOUT 0x7fff
 
-#define spi_send_byte(b) spi_transfer_byte(b)
-#define spi_rec_byte() spi_transfer_byte(0xff)
-
 // private helper functions
 static char hex_char(uint8_t val);
 static uint8_t wait_byte(uint8_t val);
 static uint8_t send_command(uint8_t command, uint32_t arg);
 static uint8_t get_info(void);
 
-// macro to skip n byted from spi
-// 'uint8_t b;' needs to be defined in calling function
-#define skip_bytes(n) for (b = 0; b < n; b++) spi_rec_byte()
+static uint8_t tmp_buf[16];
 
 uint8_t drive_init(void) {
-  uint8_t b;
   uint8_t resp;
   uint16_t i;
 
@@ -123,7 +117,7 @@ uint8_t drive_init(void) {
   drive_info.type = DRIVE_TYPE_MMC;
     
   // card needs 74 cycles minimum to start up
-  skip_bytes(10);
+  spi_read_block(tmp_buf, 10);
 
   // address card
   drive_select();
@@ -142,19 +136,14 @@ uint8_t drive_init(void) {
     | 0xaa // test pattern
   );
   if ((resp & STATE_ILL_COMMAND) == 0) {
-    // receive bit 24-31
-    spi_rec_byte();
-    // receive bit 16-23
-    spi_rec_byte();
+    spi_read_block(tmp_buf, 4);
 
-    // receive bit 8-15
-    if ((spi_rec_byte() & 0x01) == 0) {
+    if ((tmp_buf[2] & 0x01) == 0) {
       // card operation voltage range doesn't match
       goto fail;
     }
 
-    // receive bit 0-7
-    if (spi_rec_byte() != 0xaa) {
+    if (tmp_buf[3] != 0xaa) {
       // wrong test pattern
       goto fail;
     }
@@ -199,13 +188,11 @@ uint8_t drive_init(void) {
       goto fail;
     }
 
-    // receive bit 24-31
-    if (spi_rec_byte() & 0x40) {
+    spi_read_block(tmp_buf, 4);
+
+    if (tmp_buf[0] & 0x40) {
       drive_info.type = DRIVE_TYPE_SDHC;
     }
-
-    // receive bit 16-0
-    skip_bytes(3);
   }
 
   // set block size to 512 bytes
@@ -235,12 +222,10 @@ void drive_select(void) {
 }
 
 void drive_deselect(void) {
-  uint8_t b;
-
   spi_deselect_drive();
 
   // Create 80 clock pulse after releasing the card
-  skip_bytes(10);
+  spi_read_block(tmp_buf, 10);
 }
 
 static char hex_char(uint8_t val) {
@@ -297,8 +282,6 @@ uint8_t send_command(uint8_t command, uint32_t arg) {
 }
 
 void drive_read_block(uint32_t blkno, uint8_t *data) {
-  uint16_t i;
-
   // use byte offset if not SDHC
   if (drive_info.type != DRIVE_TYPE_SDHC) {
     blkno <<= TFS_BLOCKSIZE_WIDTH;
@@ -317,18 +300,13 @@ void drive_read_block(uint32_t blkno, uint8_t *data) {
   }
 
   // read byte block
-  for (i = 0; i < TFS_BLOCKSIZE; i++, data++) {
-    *data = spi_rec_byte();
-  }
+  spi_read_block(data, TFS_BLOCKSIZE);
 
   // read crc16
-  spi_rec_byte();
-  spi_rec_byte();
+  spi_read_block(tmp_buf, 2);
 }
 
 void drive_write_block(uint32_t blkno, const uint8_t *data) {
-  uint16_t i;
-
   // use byte offset if not SDHC
   if (drive_info.type != DRIVE_TYPE_SDHC) {
     blkno <<= TFS_BLOCKSIZE_WIDTH;
@@ -347,9 +325,7 @@ void drive_write_block(uint32_t blkno, const uint8_t *data) {
   spi_send_byte(0xfe);
 
   // write byte block
-  for (i = 0; i < TFS_BLOCKSIZE; i++, data++) {
-    spi_send_byte(*data);
-  }
+  spi_write_block(data, TFS_BLOCKSIZE);
 
   // write dummy crc16
   spi_send_byte(0xff);
@@ -369,6 +345,7 @@ static uint8_t get_info(void) {
   uint8_t csd_c_size_mult;
   uint32_t csd_c_size;
   uint8_t csd_structure;
+  uint8_t *p;
   char *model = drive_info.model;
   char *serno = drive_info.serno;
 
@@ -381,46 +358,40 @@ static uint8_t get_info(void) {
     return 0;
   }
 
-  manuf = spi_rec_byte();
-  spi_rec_byte();
-  spi_rec_byte();
-    for (b = 0; b < 5; b++) {
-      *(model++) = spi_rec_byte();
-    }
+  spi_read_block(tmp_buf, 16);
+  p = tmp_buf;
+
+  manuf = *(p++);
+  p += 2;
+  for (b = 0; b < 5; b++) {
+    *(model++) = *(p++);
+  }
     *(model++) = ' ';
     *(model++) = 'M';
     *(model++) = 'F';
     *(model++) = hex_char(manuf >> 4);
     *(model++) = hex_char(manuf);
-  b = spi_rec_byte();
-    *(model++) = ' ';
+  *(model++) = ' ';
     *(model++) = 'R';
-    *(model++) = hex_char(b >> 4);
-    *(model++) = hex_char(b);
-  b = spi_rec_byte();
-    *(serno++) = hex_char(b >> 4);
-    *(serno++) = hex_char(b);
-  b = spi_rec_byte();
-    *(serno++) = hex_char(b >> 4);
-    *(serno++) = hex_char(b);
-  b = spi_rec_byte();
-    *(serno++) = hex_char(b >> 4);
-    *(serno++) = hex_char(b);
-  b = spi_rec_byte();
-    *(serno++) = hex_char(b >> 4);
-    *(serno++) = hex_char(b);
+    *(model++) = hex_char(*p >> 4);
+    *(model++) = hex_char(*(p++));
+  *(serno++) = hex_char(*p >> 4);
+    *(serno++) = hex_char(*(p++));
+  *(serno++) = hex_char(*p >> 4);
+    *(serno++) = hex_char(*(p++));
+  *(serno++) = hex_char(*p >> 4);
+    *(serno++) = hex_char(*(p++));
+  *(serno++) = hex_char(*p >> 4);
+    *(serno++) = hex_char(*(p++));
     *(serno++) = 0;
-  b = spi_rec_byte();
-    *(model++) = ' ';
+  *(model++) = ' ';
     *(model++) = 'M';
     *(model++) = 'D';
-    *(model++) = hex_char(b);
-  b = spi_rec_byte();
-    *(model++) = hex_char(b >> 4);
+    *(model++) = hex_char(*(p++));
+  *(model++) = hex_char(*p >> 4);
     *(model++) = '/';
-    *(model++) = hex_char(b);
+    *(model++) = hex_char(*(p++));
     *(model++) = 0;
-  skip_bytes(3);
 
   // read csd register
   if(send_command(CMD_SEND_CSD, 0)) {
@@ -431,30 +402,31 @@ static uint8_t get_info(void) {
     return 0;
   }
 
-  csd_structure = spi_rec_byte() >> 6;
-  skip_bytes(4);
+  spi_read_block(tmp_buf, 16);
+  p = tmp_buf;
+
+  csd_structure = *(p++) >> 6;
+  p += 4;
 
   if (csd_structure == 0x01) {
-    spi_rec_byte();
-    spi_rec_byte();
-    csd_c_size  = (uint32_t) (spi_rec_byte() & 0x3f) << 16;
-    csd_c_size |= (uint32_t) spi_rec_byte() << 8;
-    csd_c_size |= spi_rec_byte();
+    p += 2;
+    csd_c_size  = (uint32_t) (*(p++) & 0x3f) << 16;
+    csd_c_size |= (uint32_t) *(p++) << 8;
+    csd_c_size |= *(p++);
       csd_c_size++;
-    spi_rec_byte();
+    p ++;
     drive_info.blk_count = csd_c_size * 1024;
   } else {
-    csd_read_bl_len = spi_rec_byte() & 0x0f;
-    csd_c_size  = (uint32_t) (spi_rec_byte() & 0x03) << 10;
-    csd_c_size |= (uint32_t) spi_rec_byte() << 2;
-    csd_c_size |= spi_rec_byte() >> 6;
+    csd_read_bl_len = *(p++) & 0x0f;
+    csd_c_size  = (uint32_t) (*(p++) & 0x03) << 10;
+    csd_c_size |= (uint32_t) *(p++) << 2;
+    csd_c_size |= *(p++) >> 6;
       csd_c_size++;
-    csd_c_size_mult  = (spi_rec_byte() & 0x03) << 1;
-    csd_c_size_mult |= spi_rec_byte() >> 7;
+    csd_c_size_mult  = (*(p++) & 0x03) << 1;
+    csd_c_size_mult |= *(p++) >> 7;
     csd_c_size <<= csd_c_size_mult + csd_read_bl_len + 2;
     drive_info.blk_count = csd_c_size >> TFS_BLOCKSIZE_WIDTH;
   }
-  skip_bytes(7);
 
   return 1;
 }
