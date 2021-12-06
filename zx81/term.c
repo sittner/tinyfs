@@ -2,32 +2,34 @@
 
 #include <stdlib.h>
 
-#define D_FILE_ADR 16396
-#define LAST_K_ADR 16421
-
 // do not warn about missing return value on assembler functions
 #pragma disable_warning 59
+#pragma disable_warning 85
 
-static volatile uint8_t * __at D_FILE_ADR D_FILE;
+#define PRINT_A_RST 0x10
+
+static volatile uint8_t   __at 0x4027 DEBOUNCE;
+static volatile uint8_t * __at 0x400C D_FILE;
+static volatile uint16_t  __at 0x4025 LAST_K;
 
 // table mapping ascii (7-bit) to ZX81 char set
 static const uint8_t ascii2zx[] = {
-  00, 00, 00, 00, 00, 00, 00, 00,
-  00, 00, 00, 00, 00, 00, 00, 00,
-  00, 00, 00, 00, 00, 00, 00, 00,
-  00, 00, 00, 00, 00, 00, 00, 00,
-  00, 00, 11, 12, 13, 00, 00, 11,
-  16, 17, 23, 21, 26, 22, 27, 24,
-  28, 29, 30, 31, 32, 33, 34, 35,
-  36, 37, 14, 25, 19, 20, 18, 15,
-  23, 38, 39, 40, 41, 42, 43, 44,
-  45, 46, 47, 48, 49, 50, 51, 52,
-  53, 54, 55, 56, 57, 58, 59, 60,
-  61, 62, 63, 16, 24, 17, 11, 22,
-  11, 38, 39, 40, 41, 42, 43, 44,
-  45, 46, 47, 48, 49, 50, 51, 52,
-  53, 54, 55, 56, 57, 58, 59, 60,
-  61, 62, 63, 16, 24, 17, 11, 00
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x76, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x0b, 0x0c, 0x0d, 0x00, 0x00, 0x0b,
+  0x10, 0x11, 0x17, 0x15, 0x1a, 0x16, 0x1b, 0x18,
+  0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23,
+  0x24, 0x25, 0x0e, 0x19, 0x13, 0x14, 0x12, 0x0f,
+  0x17, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c,
+  0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34,
+  0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c,
+  0x3d, 0x3e, 0x3f, 0x10, 0x18, 0x11, 0x0b, 0x16,
+  0x0b, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c,
+  0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34,
+  0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c,
+  0x3d, 0x3e, 0x3f, 0x10, 0x18, 0x11, 0x0b, 0x00
 };
 
 static const char zx2ascii[] =
@@ -40,42 +42,26 @@ static const char zx2ascii[] =
   "                "  //  96 - 111
   "                "; // 112 - 127
 
-static uint8_t *pos;
-static uint8_t pos_x;
-
 char term_buf[TERM_BUFFER_SIZE];
 
 void term_clrscrn() {
-  pos = D_FILE + 1;
-  pos_x = 0;
-
 __asm
-  ld hl,(D_FILE_ADR)
-  dec hl
-  ld a,#24
-00001$:
-  inc hl
-  inc hl
-  ld d,h
-  ld e,l
-  inc de
-  ld bc,#31
-  ld (hl),#0
-  ldir
-  dec a
-  jr nz,00001$
+  call _ROM_CLS
 __endasm;
 }
 
 void term_putc(char c) {
-  if (c == '\n') {
-    pos += 33 - pos_x;
-    pos_x = 0;
-    return;
-  }
+__asm
+  ; convert ASCII to ZX81 charset
+  ld c, 4(ix)
+  res 7, c
+  ld b, #0x00
+  ld hl, #_ascii2zx
+  add hl, bc
+  ld a, (hl)
 
-  *(pos++) = ascii2zx[c & 0x7f];
-  pos_x++;
+  rst #PRINT_A_RST
+__endasm;
 }
 
 void term_puts(const char *s) {
@@ -113,31 +99,10 @@ void term_putul_aligned(uint32_t v, uint8_t size) {
 
 uint16_t term_get_key(void) {
 __asm
-  push ix
-
-  call _ROM_SLOW       ; force slow mode
-
-00001$:
-  ld hl,(LAST_K_ADR)   ; wait for key
-  ld a,h
-  and a,h
-  cp #0xff
-  jp z,00001$
-
-  push hl              ; remember key code
-
-00002$:
-  ld hl,(LAST_K_ADR)   ; wait for key release
-  ld a,h
-  and a,h
-  cp #0xff
-  jp nz,00002$
-
-  call _ROM_FAST       ; force fast mode
-
-  pop hl               ; recall key code
-
-  pop ix
+  ld a, #0xff
+  ld (_DEBOUNCE), a
+  call _ROM_DISPLAY_1
+  ld hl,(_LAST_K)
 __endasm;
 }
 

@@ -175,7 +175,7 @@ void show_error() {
   }
 
   term_clrscrn();
-  term_puts("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n        ");
+  term_puts("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
   term_puts(error_msg[last_error - 1]);
 }
 

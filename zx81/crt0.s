@@ -21,16 +21,16 @@
 
 	.module crt0
 
-CDFLAG_ADR .equ 16443
-
-	.globl	_ROM_AFTER_PATCH
+	.globl	_ROM_SLOW_FAST
+	.globl	_ROM_DISPLAY_1
 	.globl	_ROM_REPORT_F
 	.globl	_ROM_SAVE_CONT
 	.globl	_ROM_LOAD_CONT
 	.globl	_ROM_GET_FILENAME
 	.globl	_ROM_INIT_CONT
-	.globl	_ROM_FAST
-	.globl	_ROM_SLOW
+	.globl	_ROM_PRINT_CH
+	.globl	_ROM_PRINT_SP
+	.globl	_ROM_CLS
 
 	.globl	_init
 	.globl	_save
@@ -55,6 +55,9 @@ CDFLAG_ADR .equ 16443
 	.area	_BSEG
 	.area   _BSS
 	.area   _HEAP
+
+	.area	_DATA
+_CDFLAG =	0x403B
 
 	.area   _CODE
 
@@ -105,7 +108,7 @@ save_patch:
 	push ix
 
 	; save CDFLAG
-	ld a,(CDFLAG_ADR)
+	ld a,(_CDFLAG)
 	push af
 
 	; we need FAST mode, since sdcc is using IX
@@ -142,7 +145,7 @@ load_patch:
 	push ix
 
 	; save CDFLAG
-	ld a,(CDFLAG_ADR)
+	ld a,(_CDFLAG)
 	push af
 
 	; we need FAST mode, since sdcc is using IX
@@ -164,7 +167,7 @@ load_tape:
 exit_to_os:
 	; restore CDFLAG
 	pop af
-	ld (CDFLAG_ADR),a
+	ld (_CDFLAG),a
 
 	pop ix
 	pop hl
@@ -181,7 +184,7 @@ exit_failed:
 
 exit_ok:
 	pop af
-	jp _ROM_AFTER_PATCH
+	jp _ROM_SLOW_FAST
 
 	.area   _GSINIT
 
