@@ -5,9 +5,9 @@ BIN := $(NAME).bin
 ROM := $(NAME)-rom.bin
 ROMHEX := $(NAME)-rom-16k.hex
 ASOURCES := crt0.s
-CSOURCES := main.c filesys.c mmc.c term.c spi.c
-HEADERS := filesys.h mmc.h term.h
-OBJECTS := $(patsubst %.s,%.rel,$(ASOURCES)) $(patsubst %.c,%.rel,$(CSOURCES))
+CSOURCES := main.c ../filesys.c ../mmc.c term.c spi.c
+HEADERS := ../filesys.h ../mmc.h term.h
+OBJECTS := $(patsubst %.s,%.rel,$(ASOURCES)) $(patsubst ../%,%,$(patsubst %.c,%.rel,$(CSOURCES)))
 
 CC = sdcc
 AS = sdasz80
@@ -15,10 +15,13 @@ AS = sdasz80
 ASFLAGS = -plosgff
 
 MFLAGS := -mz80 --opt-code-size --reserve-regs-iy --constseg CDATA
-CFLAGS := -DLITTLE_ENDIAN=1 -DTFS_NO_FORMAT
+CFLAGS := -I.. -DLITTLE_ENDIAN=1 -DTFS_NO_FORMAT
 LFLAGS := --code-loc 0x2000 --data-loc 0xf800 --no-std-crt0
 
 all: $(ROMHEX) showmem
+
+%.rel: ../%.c $(HEADERS)
+	$(CC) $(MFLAGS) $(CFLAGS) -c -o $@ $<
 
 %.rel: %.c $(HEADERS)
 	$(CC) $(MFLAGS) $(CFLAGS) -c -o $@ $<

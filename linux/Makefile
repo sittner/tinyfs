@@ -1,16 +1,19 @@
 TARGET := fstest
-CSOURCES := main.c filesys.c drive.c
-HEADERS := filesys.h drive.h
-OBJECTS := $(patsubst %.c,%.o,$(CSOURCES))
+SOURCES := main.c ../filesys.c drive.c
+HEADERS := ../filesys.h drive.h
+OBJECTS := $(patsubst ../%,%,$(patsubst %.c,%.o,$(SOURCES)))
 
 CC = gcc
-CFLAGS = -Wall -g
+CFLAGS = -Wall -I..
 LFLAGS =
 
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
 	$(CC) -o $@ $(OBJECTS)
+
+%.o: ../%.c $(HEADERS)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c -o $@ $<
