@@ -93,14 +93,14 @@ init_patch:
 save_patch:
 	; get filename
 	call _ROM_GET_FILENAME
-	jp c,save_tape
+	jr c,save_tape
 	push af
 
 	; check for ":" prefix for mmc access
 	ld a,(de)
 	and #0x7f
 	cp #14
-	jr nz,save_tape
+	jr NZ,save_tape
 
 	push bc
 	push de
@@ -121,7 +121,7 @@ save_patch:
 	call _save
 
 	call _show_error
-	jp exit_to_os
+	jr exit_to_os
 
 save_tape:
 	pop af
@@ -130,14 +130,14 @@ save_tape:
 load_patch:
 	; get filename
 	call _ROM_GET_FILENAME
-	jp c,load_tape
+	jr c,load_tape
 	push af
 
 	; check for ":" prefix for mmc access
 	ld a,(de)
 	and #0x7f
 	cp #14
-	jr nz,load_tape
+	jr NZ,load_tape
 
 	push bc
 	push de
@@ -158,7 +158,7 @@ load_patch:
 	call _load
 
 	call _show_error
-	jp exit_to_os
+	jr exit_to_os
 
 load_tape:
 	pop af
@@ -176,15 +176,15 @@ exit_to_os:
 
 	ld a,(_last_error)
 	cp #0
-	jp z,exit_ok
+	jr NZ,exit_error
 
-exit_failed:
-	pop af
-	jp _ROM_REPORT_F
-
-exit_ok:
 	pop af
 	jp _ROM_SLOW_FAST
+
+exit_error:
+	pop af
+	rst #0x08 ; ERROR-1
+	.db 0x1b  ; error S (sd card error)
 
 	.area   _GSINIT
 
