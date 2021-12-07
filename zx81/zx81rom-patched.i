@@ -990,7 +990,6 @@ L02E7:	bit	7,0x3B(IY)	; sv CDFLAG
 ; --------------
 
 ;; REPORT-F
-_ROM_REPORT_F:
 L02F4:	rst	#0x08		; ERROR-1
 	.db	0x0E		; Error Report: No Program Name supplied.
 
@@ -1232,7 +1231,7 @@ L03A6:	rst	#0x08		; ERROR-1
 ;
 
 ;; NAME
-_ROM_GET_FILENAME:
+_ROM_PROGRAM_NAME:
 L03A8:	call	L0F55		; routine SCANNING
 	ld	A,(0x4001)	; sv FLAGS
 	add	A,A		;

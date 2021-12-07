@@ -23,10 +23,9 @@
 
 	.globl	_ROM_SLOW_FAST
 	.globl	_ROM_DISPLAY_1
-	.globl	_ROM_REPORT_F
 	.globl	_ROM_SAVE_CONT
 	.globl	_ROM_LOAD_CONT
-	.globl	_ROM_GET_FILENAME
+	.globl	_ROM_PROGRAM_NAME
 	.globl	_ROM_INIT_CONT
 	.globl	_ROM_PRINT_CH
 	.globl	_ROM_PRINT_SP
@@ -92,7 +91,7 @@ init_patch:
 
 save_patch:
 	; get filename
-	call _ROM_GET_FILENAME
+	call _ROM_PROGRAM_NAME
 	jr c,save_tape
 	push af
 
@@ -129,7 +128,7 @@ save_tape:
 
 load_patch:
 	; get filename
-	call _ROM_GET_FILENAME
+	call _ROM_PROGRAM_NAME
 	jr c,load_tape
 	push af
 
