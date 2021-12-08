@@ -6,13 +6,15 @@
 
 void spi_select_drive(void) {
 __asm
- out (0xf7), a
+  ld a, #1
+  out (0xf7), a
 __endasm;
 }
 
 void spi_deselect_drive(void) {
 __asm
- in a, (0xf7)
+  ld a, #0
+  out (0xf7), a
 __endasm;
 }
 
