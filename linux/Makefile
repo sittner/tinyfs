@@ -1,3 +1,8 @@
+MKFS_TARGET := mkfs.tfs
+MKFS_SRCS := mkfs.c drive.c
+MKFS_HEADERS := ../filesys.h drive.h
+MKFS_OBJS := $(patsubst ../%,%,$(patsubst %.c,%.o,$(MKFS_SRCS)))
+
 TARGET := fstest
 SOURCES := main.c ../filesys.c drive.c
 HEADERS := ../filesys.h drive.h
@@ -7,7 +12,10 @@ CC = gcc
 CFLAGS = -Wall -I..
 LFLAGS =
 
-all: $(TARGET)
+all: $(MKFS_TARGET) $(TARGET)
+
+$(MKFS_TARGET): $(MKFS_OBJS)
+	$(CC) -o $@ $(MKFS_OBJS)
 
 $(TARGET): $(OBJECTS)
 	$(CC) -o $@ $(OBJECTS)
@@ -19,6 +27,7 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
+	rm -f $(MKFS_TAGKET) $(MKFS_OBJS)
 	rm -f $(OBJECTS)
 	rm -f $(TARGET)
 
