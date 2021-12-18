@@ -91,7 +91,7 @@ void save(uint8_t *name) {
       return;
 
     case '$':
-#ifndef TFS_NO_FORMAT
+#ifdef TFS_ENABLE_FORMAT
       tfs_format();
       return;
 #endif

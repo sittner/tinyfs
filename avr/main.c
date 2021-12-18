@@ -72,7 +72,7 @@ static int print_error(void) {
 static uint16_t dirs;
 static uint16_t files;
 
-uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
+uint8_t tfs_dir_handler(const TFS_DIR_ITEM *item) {
   uint32_t w = item->size;
   uint32_t num = 1000000000;
   uint8_t started = 0;
@@ -184,7 +184,7 @@ int main(void) {
       dirs = 0;
       files = 0;
       uart_puts_p(PSTR("      size name\n"));
-      tfs_read_dir(0);
+      tfs_read_dir();
 
       uart_putw_dec(dirs);
       uart_puts_p(PSTR(" dirs, "));
