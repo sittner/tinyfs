@@ -56,6 +56,11 @@ int drive_close(void) {
 }
 
 void drive_read_block(uint32_t blkno, uint8_t *data) {
+  if (blkno >= drive_info.blk_count) {
+    last_error = TFS_ERR_IO;
+    return;
+  }
+
   if (lseek(drive_fd, (off_t) blkno * TFS_BLOCKSIZE, SEEK_SET) < 0) {
     last_error = TFS_ERR_IO;
     return;
@@ -70,6 +75,11 @@ void drive_read_block(uint32_t blkno, uint8_t *data) {
 }
 
 void drive_write_block(uint32_t blkno, const uint8_t *data) {
+  if (blkno >= drive_info.blk_count) {
+    last_error = TFS_ERR_IO;
+    return;
+  }
+
   if (lseek(drive_fd, (off_t) blkno * TFS_BLOCKSIZE, SEEK_SET) < 0) {
     last_error = TFS_ERR_IO;
     return;
