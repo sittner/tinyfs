@@ -96,7 +96,7 @@ static int op_getattr(const char *path, struct stat *st) {
 
   if (item == NULL) {
     return -ENOENT;
-  }  
+  }
 
   return item_to_stat(item, st);
 }
@@ -347,37 +347,45 @@ static const struct fuse_operations ops = {
   .readdir = op_readdir
 };
 
-int main(int argc, char **argv) {
-  int ret = 0;
+static int fuse_main_st(int argc, char *argv[], const struct fuse_operations *op, size_t op_size, void *user_data) {
+  struct fuse *fuse;
+  char *mountpoint;
+  int multithreaded;
+  int res;
 
-  // bbfs doesn't do any access checking on its own (the comment
-  // blocks in fuse.h mention some of the functions that need
-  // accesses checked -- but note there are other functions, like
-  // chown(), that also need checking!).  Since running bbfs as root
-  // will therefore open Metrodome-sized holes in the system
-  // security, we'll check if root is trying to mount the filesystem
-  // and refuse if it is.  The somewhat smaller hole of an ordinary
-  // user doing it with the allow_other flag is still there because
-  // I don't want to parse the options string.
-  if ((getuid() == 0) || (geteuid() == 0)) {
-    fprintf(stderr, "Running BBFS as root opens unnacceptable security holes\n");
+  fuse = fuse_setup(argc, argv, op, op_size, &mountpoint, &multithreaded, user_data);
+  if (fuse == NULL) {
     return 1;
   }
 
+  res = fuse_loop(fuse);
+
+  fuse_teardown(fuse, mountpoint);
+
+  if (res == -1) {
+    return 1;
+  }
+
+  return 0;
+}
+
+int main(int argc, char **argv) {
+  int ret = 0;
+
   // See which version of fuse we're running
   fprintf(stderr, "Fuse library version %d.%d\n", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION);
-    
+
   // Perform some sanity checking on the command line:  make sure
   // there are enough arguments, and that neither of the last two
   // start with a hyphen (this will break if you actually have a
   // rootpoint or mountpoint whose name starts with a hyphen, but so
   // will a zillion other programs)
-  if ((argc < 3) || (argv[argc - 2][0] == '-') || (argv[argc - 1][0] == '-')) {
-    fprintf(stderr, "usage:  tfs_fuse [FUSE and mount options] <mountpoint> <device/image file>\n");
+  if ((argc < 3) || (argv[1][0] == '-') || (argv[2][0] == '-')) {
+    fprintf(stderr, "usage:  tfs <device/image file> <mountpoint> [FUSE and mount options]\n");
     return 1;
   }
 
-  if (drive_open(argv[argc - 1]) < 0) {
+  if (drive_open(argv[1]) < 0) {
     fprintf(stderr, "Failed open device (error %d).\n", errno);
     return 1;
   }
@@ -387,7 +395,7 @@ int main(int argc, char **argv) {
   my_uid = getuid();
 
   // turn over control to fuse
-  ret = fuse_main(argc - 1, argv, &ops, NULL);
+  ret = fuse_main_st(argc - 1, &argv[1], &ops, sizeof(ops), NULL);
 
   drive_close();
 
