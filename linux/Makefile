@@ -3,7 +3,7 @@ MKFS_SRCS := mkfs.c drive.c err_handler.c ../filesys.c
 MKFS_HEADERS := drive.h err_handler.h filesys_conf.h ../filesys.h
 MKFS_OBJS := $(patsubst ../%,%,$(patsubst %.c,%.o,$(MKFS_SRCS)))
 
-TFS_TARGET := tfs_fuse
+TFS_TARGET := tfs
 TFS_SRCS := tfs_fuse.c drive.c err_handler.c ../filesys.c
 TFS_HEADERS := drive.h err_handler.h filesys_conf.h ../filesys.h
 TFS_OBJS := $(patsubst ../%,%,$(patsubst %.c,%.o,$(TFS_SRCS)))
@@ -27,8 +27,8 @@ $(TFS_TARGET): $(TFS_OBJS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(MKFS_TAGKET) $(MKFS_OBJS)
-	rm -f $(TFS_TAGKET) $(TFS_OBJS)
+	rm -f $(MKFS_TARGET) $(MKFS_OBJS)
+	rm -f $(TFS_TARGET) $(TFS_OBJS)
 
 .PHONY: all clean
 

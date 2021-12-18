@@ -12,4 +12,4 @@ fstest
 *.hex
 *.bin
 /linux/mkfs.tfs
-/linux/tfs_fuse
+/linux/tfs
