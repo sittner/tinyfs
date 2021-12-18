@@ -137,7 +137,7 @@ void load(uint8_t *name) {
       print_dir_header();
       dir_files = 0;
       dir_dirs = 0;
-      if (tfs_read_dir(0)) {
+      if (tfs_read_dir()) {
         term_puts("files: "); term_putul(dir_files);
         term_puts(" dirs: "); term_putul(dir_dirs);
       }
@@ -185,10 +185,8 @@ static void print_dir_header(void) {
   dir_line = 1;
 }
 
-uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item) {
+uint8_t tfs_dir_handler(const TFS_DIR_ITEM *item) {
   uint16_t key;
-
-  (void) mux; // keep compiler happy
 
   switch (item->type) {
     case TFS_DIR_ITEM_DIR:

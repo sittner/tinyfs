@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "filesys_conf.h"
+
 #define DRIVE_INFO_MODEL_LEN 32
 #define DRIVE_INFO_FW_LEN 8
 #define DRIVE_INFO_SERNO_LEN 20
@@ -36,6 +38,11 @@ typedef struct {
 #define TFS_ERR_NO_NAME      7
 #define TFS_ERR_NAME_INVAL   8
 #define TFS_ERR_UNEXP_EOF    9
+#ifdef TFS_EXTENDED_API
+#define TFS_ERR_NO_FREE_FD  100
+#define TFS_ERR_INVAL_FD    101
+#define TFS_FILE_BUSY       102
+#endif
 
 #ifdef __GNUC__
   #define _PACKED __attribute__((packed))
@@ -65,23 +72,55 @@ void drive_write_block(uint32_t blkno, const uint8_t *data);
 
 void tfs_init(void);
 
-#ifndef TFS_NO_FORMAT
+#ifdef TFS_ENABLE_FORMAT
 void tfs_format(void);
+
+#ifdef TFS_FORMAT_STATE_CALLBACK
+#define TFS_FORMAT_STATE_START        0
+#define TFS_FORMAT_STATE_BITMAP_START 1
+#define TFS_FORMAT_STATE_BITMAP_DONE  2
+#define TFS_FORMAT_STATE_ROOTDIR      3
+#define TFS_FORMAT_STATE_DONE         4
+
+// user defined callbacks
+void tfs_format_state(uint8_t state);
+void tfs_format_progress(uint32_t pos, uint32_t max);
+#endif
+
 #endif
 
 uint32_t tfs_get_used(void);
 
-uint8_t tfs_read_dir(uint8_t mux);
+#ifdef TFS_READ_DIR_USERDATA
+uint8_t tfs_read_dir(TFS_READ_DIR_USERDATA data);
+uint8_t tfs_dir_handler(TFS_READ_DIR_USERDATA data, const TFS_DIR_ITEM *item);
+#else
+uint8_t tfs_read_dir(void);
+uint8_t tfs_dir_handler(const TFS_DIR_ITEM *item);
+#endif
+
 void tfs_change_dir(const char *name);
 void tfs_create_dir(const char *name);
 
 void tfs_write_file(const char *name, const uint8_t *data, uint32_t len, uint8_t overwrite);
 uint32_t tfs_read_file(const char *name, uint8_t *data, uint32_t max_len);
 
+#ifdef TFS_EXTENDED_API
+void tfs_delete(const char *name, uint8_t type);
+#else
 void tfs_delete(const char *name);
+#endif
+
 void tfs_rename(const char *from, const char *to);
 
-// user defined callbacks
-uint8_t tfs_dir_handler(uint8_t mux, const TFS_DIR_ITEM *item);
+#ifdef TFS_EXTENDED_API
+TFS_DIR_ITEM *tfs_stat(const char *name);
+void tfs_touch(const char *name);
+int8_t tfs_open(const char *name);
+void tfs_close(int8_t fd);
+void tfs_trunc(int8_t fd, uint32_t size);
+uint32_t tfs_write(int8_t fd, const uint8_t *data, uint32_t len, uint32_t offset);
+uint32_t tfs_read(int8_t fd, uint8_t *data, uint32_t len, uint32_t offset);
+#endif
 
 #endif

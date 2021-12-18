@@ -1,11 +1,61 @@
-#include "filesys_priv.h"
+#include "filesys.h"
 
 #include <string.h>
+
+// first bitmap block must start at 0 to simlify offset calculation
+#define TFS_FIRST_BITMAP_BLK 0
+#define TFS_ROOT_DIR_BLK     1
+
+typedef struct {
+  uint32_t prev;
+  uint32_t next;
+  uint8_t data[];
+} _PACKED TFS_DATA_BLK;
+
+#define TFS_DATA_LEN (TFS_BLOCKSIZE - sizeof(TFS_DATA_BLK))
+
+typedef struct {
+  uint32_t prev;
+  uint32_t next;
+  uint32_t parent;
+  TFS_DIR_ITEM items[];
+} _PACKED TFS_DIR_BLK;
+
+#define TFS_DIR_BLK_ITEMS ((TFS_BLOCKSIZE - sizeof(TFS_DIR_BLK)) / sizeof(TFS_DIR_ITEM))
+
+typedef union {
+  uint8_t raw[TFS_BLOCKSIZE];
+  TFS_DIR_BLK dir;
+  TFS_DATA_BLK data;
+} TFS_BLK_BUFFER;
 
 TFS_DRIVE_INFO drive_info;
 uint8_t last_error;
 
 static const char *invalid_names[] = { "/", "..", NULL };
+
+#ifdef TFS_EXTENDED_API
+
+typedef struct {
+  uint8_t usage_count;
+  uint32_t dir_blk;
+  TFS_DIR_ITEM *dir_item;
+  uint32_t size;
+  uint32_t first_blk;
+  uint32_t curr_blk;
+  uint32_t curr_pos;
+} TFS_FILEHANDLE;
+
+static TFS_FILEHANDLE handles[TFS_MAX_FDS];
+
+#define SEEK_ERROR  0
+#define SEEK_OK     1
+#define SEEK_EOF    2
+#define SEEK_APPEND 3
+
+static uint8_t tfs_seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append);
+
+#endif
 
 #define TFS_BITMAP_BLK_INVAL  0xffff
 #define TFS_BITMAP_BLK_COUNT  (TFS_BLOCKSIZE << 3)
@@ -317,6 +367,10 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
 void tfs_init(void) {
   uint32_t last_blk;
 
+#ifdef TFS_EXTENDED_API
+  memset(handles, 0, sizeof(handles));
+#endif
+
   last_error = TFS_ERR_OK;
   drive_select();
 
@@ -335,13 +389,20 @@ out:
   drive_deselect();
 }
 
-#ifndef TFS_NO_FORMAT
+#ifdef TFS_ENABLE_FORMAT
 void tfs_format(void) {
   uint32_t pos;
   uint8_t mask, last;
   uint16_t offset;
+#ifdef TFS_FORMAT_STATE_CALLBACK
+  uint32_t prog_max = last_bitmap_blk >> TFS_BITMAP_BLK_SHIFT;
+#endif
 
   last_error = TFS_ERR_OK;
+#ifdef TFS_FORMAT_STATE_CALLBACK
+  tfs_format_state(TFS_FORMAT_STATE_START);
+#endif
+
   drive_select();
 
   // write the bitmap-blocks
@@ -350,7 +411,15 @@ void tfs_format(void) {
   bitmap_blk[0] = 1;
   pos = TFS_FIRST_BITMAP_BLK;
   last = 0;
+#ifdef TFS_FORMAT_STATE_CALLBACK
+  tfs_format_state(TFS_FORMAT_STATE_BITMAP_START);
+#endif
   while(1) {
+#ifdef TFS_FORMAT_STATE_CALLBACK
+    // print progress
+    tfs_format_progress(pos >> TFS_BITMAP_BLK_SHIFT, prog_max);
+#endif
+
     if (pos == last_bitmap_blk) {
       last = 1;
       // mark all blocks after end of disk as used
@@ -370,6 +439,9 @@ void tfs_format(void) {
 
     // break on last block
     if (last) {
+#ifdef TFS_FORMAT_STATE_CALLBACK
+      tfs_format_state(TFS_FORMAT_STATE_BITMAP_DONE);
+#endif
       break;
     }
 
@@ -382,6 +454,10 @@ void tfs_format(void) {
   if (last_error != TFS_ERR_OK) {
     goto out;
   }
+
+#ifdef TFS_FORMAT_STATE_CALLBACK
+  tfs_format_state(TFS_FORMAT_STATE_ROOTDIR);
+#endif
 
   // alloc root dir block (should be block 3)
   pos = alloc_block();
@@ -400,6 +476,10 @@ void tfs_format(void) {
 
   current_dir_blk = TFS_ROOT_DIR_BLK;
   loaded_dir_blk = 0;
+
+#ifdef TFS_FORMAT_STATE_CALLBACK
+  tfs_format_state(TFS_FORMAT_STATE_DONE);
+#endif
 
 out:
   drive_deselect();
@@ -446,7 +526,11 @@ uint32_t tfs_get_used(void) {
   }
 }
 
-uint8_t tfs_read_dir(uint8_t mux) {
+#ifdef TFS_READ_DIR_USERDATA
+uint8_t tfs_read_dir(TFS_READ_DIR_USERDATA data) {
+#else
+uint8_t tfs_read_dir(void) {
+#endif
   uint32_t pos = current_dir_blk;
   uint8_t i;
   uint8_t done = 0;
@@ -464,7 +548,11 @@ uint8_t tfs_read_dir(uint8_t mux) {
 
     // iterrate items
     for (i = 0, p = blk_buf.dir.items; i < TFS_DIR_BLK_ITEMS; i++, p++) {
-      if (!tfs_dir_handler(mux, p)) {
+#ifdef TFS_READ_DIR_USERDATA
+      if (!tfs_dir_handler(data, p)) {
+#else
+      if (!tfs_dir_handler(p)) {
+#endif
         goto out;
       }
     }
@@ -720,11 +808,19 @@ out:
   return len;
 }
 
+#ifdef TFS_EXTENDED_API
+void tfs_delete(const char *name, uint8_t type) {
+#else
 void tfs_delete(const char *name) {
+#endif
   TFS_DIR_ITEM *item;
   uint32_t pos;
   uint8_t i;
   TFS_DIR_ITEM *p;
+#ifdef TFS_EXTENDED_API
+  TFS_FILEHANDLE *hnd;
+  int8_t fd;
+#endif
 
   last_error = TFS_ERR_OK;
   drive_select();
@@ -740,6 +836,22 @@ void tfs_delete(const char *name) {
     last_error = TFS_ERR_NOT_EXIST;
     goto out;
   }
+
+#ifdef TFS_EXTENDED_API
+  // check file type
+  if (type != 0 && item->type != type) {
+    last_error = TFS_ERR_NOT_EXIST;
+    goto out;
+  }
+
+  // check if file is in use
+  for (fd = 0, hnd = handles; fd < TFS_MAX_FDS; fd++, hnd++) {
+    if (hnd->dir_blk == loaded_dir_blk && hnd->dir_item == item && hnd->usage_count > 0) {
+      last_error = TFS_FILE_BUSY;
+      goto out;
+    }
+  }
+#endif
 
   // remember starting block
   pos = item->blk;
@@ -838,4 +950,509 @@ void tfs_rename(const char *from, const char *to) {
 out:
   drive_deselect();
 }
+
+#ifdef TFS_EXTENDED_API
+
+static uint8_t tfs_seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append) {
+  uint8_t need_append;
+
+  // go to start position
+  if (pos == 0 && !append) {
+    hnd->curr_blk = hnd->first_blk;
+    hnd->curr_pos = 0;
+    if (!append) {
+      return SEEK_OK;
+    }
+  }
+
+  // check if we already have a current block
+  // -> first block is initialized
+  if (hnd->curr_blk != 0) {
+    need_append = 0;
+
+    // seek backward, till we are in requested block
+    while (hnd->curr_pos > pos) {
+      drive_read_block(hnd->curr_blk, blk_buf.raw);
+      if (last_error != TFS_ERR_OK) {
+        return SEEK_ERROR;
+      }
+
+      // should never happen
+      if (blk_buf.data.prev == 0) {
+        last_error = TFS_ERR_IO;
+        return SEEK_ERROR;
+      }
+
+      hnd->curr_blk = blk_buf.data.prev;
+      hnd->curr_pos -= TFS_DATA_LEN;
+    }
+
+    // seek forward, till we are in requested block
+    while ((hnd->curr_pos + TFS_DATA_LEN) <= pos) {
+      drive_read_block(hnd->curr_blk, blk_buf.raw);
+      if (last_error != TFS_ERR_OK) {
+        return SEEK_ERROR;
+      }
+
+      // append needed?
+      if (blk_buf.data.next == 0) {
+        need_append = 1;
+        break;
+      }
+
+      hnd->curr_blk = blk_buf.data.next;
+      hnd->curr_pos += TFS_DATA_LEN;
+    }
+
+    if (!need_append) {
+      return SEEK_OK;
+    }
+  }
+
+  // now append is needed
+  if (!append) {
+    return SEEK_EOF;
+  }
+
+  // check for valid first block
+  if (hnd->first_blk == 0) {
+    // allocate first block
+    hnd->first_blk = alloc_block();
+    if (last_error != TFS_ERR_OK) {
+      return SEEK_ERROR;
+    }
+
+    hnd->curr_blk = hnd->first_blk;
+    hnd->curr_pos = 0;
+  }
+
+  memset(blk_buf.raw, 0, TFS_BLOCKSIZE);
+  while ((hnd->curr_pos + TFS_DATA_LEN) <= pos) {
+    // allocate next block
+    blk_buf.data.next = alloc_block();
+    if (last_error != TFS_ERR_OK) {
+      return SEEK_ERROR;
+    }
+
+    // update pointer
+    drive_write_block(hnd->curr_blk, blk_buf.raw);
+    if (last_error != TFS_ERR_OK) {
+      return SEEK_ERROR;
+    }
+
+    blk_buf.data.prev = hnd->curr_blk;
+    hnd->curr_blk = blk_buf.data.next;
+    blk_buf.data.next = 0;
+    hnd->curr_pos += TFS_DATA_LEN;
+  }
+
+  // current datablock and updated directory entry must be written by the caller
+  return SEEK_APPEND;
+}
+
+TFS_DIR_ITEM *tfs_stat(const char *name) {
+  TFS_DIR_ITEM *item;
+
+  last_error = TFS_ERR_OK;
+  drive_select();
+
+  item = find_file(name, 0);
+
+  drive_deselect();
+  return item;
+}
+
+void tfs_touch(const char *name) {
+  TFS_DIR_ITEM *item;
+
+  last_error = TFS_ERR_OK;
+  drive_select();
+
+  // check for name
+  item = find_file(name, 1);
+  if (last_error != TFS_ERR_OK) {
+    goto out;
+  }
+
+  // file already exists?
+  if (item->type != TFS_DIR_ITEM_FREE) {
+    goto out;
+  }
+
+  // update item
+  item->type = TFS_DIR_ITEM_FILE;
+  item->blk = 0;
+  item->size = 0;
+  strncpy(item->name, name, TFS_NAME_LEN);
+  drive_write_block(loaded_dir_blk, blk_buf.raw);
+  if (last_error != TFS_ERR_OK) {
+    goto out;
+  }
+
+out:
+  drive_deselect();
+}
+
+int8_t tfs_open(const char *name) {
+  TFS_FILEHANDLE *hnd;
+  TFS_DIR_ITEM *item;
+  int8_t fd = -1;
+
+  last_error = TFS_ERR_OK;
+  drive_select();
+
+  // search for file
+  item = find_file(name, 0);
+  if (last_error != TFS_ERR_OK) {
+    goto out;
+  }
+
+  // file not found?
+  if (item == NULL || item->type != TFS_DIR_ITEM_FILE) {
+    last_error = TFS_ERR_NOT_EXIST;
+    goto out;
+  }
+
+  // search for existing handle
+  for (fd = 0, hnd = handles; fd < TFS_MAX_FDS; fd++, hnd++) {
+    if (hnd->dir_blk == loaded_dir_blk && hnd->dir_item == item) {
+      hnd->usage_count++;
+      goto out;
+    }
+  }
+
+  // search for empty handle
+  for (fd = 0, hnd = handles; hnd->usage_count > 0; fd++, hnd++) {
+    if (fd == TFS_MAX_FDS) {
+      last_error = TFS_ERR_NO_FREE_FD;
+      fd = -1;
+      goto out;
+    }
+  }
+
+  // initialize handle
+  hnd->usage_count = 1;
+  hnd->dir_blk = loaded_dir_blk;
+  hnd->dir_item = item;
+  hnd->size = item->size;
+  hnd->first_blk = item->blk;
+  hnd->curr_blk = hnd->first_blk;
+  hnd->curr_pos = 0;
+
+out:
+  drive_deselect();
+  return fd;
+}
+
+void tfs_close(int8_t fd) {
+  TFS_FILEHANDLE *hnd;
+
+  last_error = TFS_ERR_OK;
+
+  // check fd range
+  if (fd < 0 && fd >= TFS_MAX_FDS) {
+    last_error = TFS_ERR_INVAL_FD;
+    return;
+  }
+
+  // check for valid handle
+  hnd = &handles[fd];
+  if (hnd->usage_count <= 0) {
+    last_error = TFS_ERR_INVAL_FD;
+    return;
+  }
+
+  // decrement usage counter
+  hnd->usage_count--;
+}
+
+void tfs_trunc(int8_t fd, uint32_t size) {
+  TFS_FILEHANDLE *hnd;
+  uint8_t seek_res;
+  uint32_t free_pos;
+
+  last_error = TFS_ERR_OK;
+  drive_select();
+
+  // check fd range
+  if (fd < 0 && fd >= TFS_MAX_FDS) {
+    last_error = TFS_ERR_INVAL_FD;
+    goto out;
+  }
+
+  // check for valid handle
+  hnd = &handles[fd];
+  if (hnd->usage_count <= 0) {
+    last_error = TFS_ERR_INVAL_FD;
+    goto out;
+  }
+
+  if (size == 0) {
+    // simple case: free all
+    free_file_blocks(hnd->first_blk);
+    if (last_error != TFS_ERR_OK) {
+      goto out;
+    }
+
+    hnd->first_blk = 0;
+    hnd->curr_blk = 0;
+    hnd->curr_pos = 0;
+  } else {
+    // expand file, if required
+    seek_res = tfs_seek(hnd, size, 1);
+    if (last_error != TFS_ERR_OK) {
+      goto out;
+    }
+
+    // check, if we have to free remaining blocks
+    free_pos = 0;
+    if (seek_res == SEEK_OK) {
+      free_pos = blk_buf.data.next;
+      blk_buf.data.next = 0;
+    }
+
+    // save the last block
+    if (seek_res == SEEK_APPEND || free_pos != 0) {
+      drive_write_block(hnd->curr_blk, blk_buf.raw);
+      if (last_error != TFS_ERR_OK) {
+        goto out;
+      }
+    }
+
+    // free remaining blocks
+    free_file_blocks(free_pos);
+    if (last_error != TFS_ERR_OK) {
+      goto out;
+    }
+  }
+
+  // read file's directory block
+  drive_read_block(hnd->dir_blk, blk_buf.raw);
+  if (last_error != TFS_ERR_OK) {
+    goto out;
+  }
+
+  // update item
+  hnd->dir_item->blk = hnd->first_blk;
+  hnd->dir_item->size = hnd->size;
+  drive_write_block(loaded_dir_blk, blk_buf.raw);
+
+out:
+  drive_deselect();
+}
+
+uint32_t tfs_write(int8_t fd, const uint8_t *data, uint32_t len, uint32_t offset) {
+  TFS_FILEHANDLE *hnd;
+  uint8_t seek_res;
+  uint32_t blk_os, blk_len;
+
+  uint32_t ret = 0;
+
+  last_error = TFS_ERR_OK;
+  drive_select();
+
+  // check fd range
+  if (fd < 0 && fd >= TFS_MAX_FDS) {
+    last_error = TFS_ERR_INVAL_FD;
+    goto out;
+  }
+
+  // check for valid handle
+  hnd = &handles[fd];
+  if (hnd->usage_count <= 0) {
+    last_error = TFS_ERR_INVAL_FD;
+    goto out;
+  }
+
+  // check file length
+  if (offset > hnd->size) {
+    goto out;
+  }
+
+  // seek to position
+  seek_res = tfs_seek(hnd, offset, 1);
+  if (last_error != TFS_ERR_OK) {
+    goto out;
+  }
+
+  // nothing to write?
+  if (len == 0) {
+    goto out;
+  }
+
+  // write data
+  blk_os = offset - hnd->curr_pos;
+  blk_len = TFS_DATA_LEN - blk_os;
+  while (len > 0) {
+    if (seek_res == SEEK_OK) {
+      drive_read_block(hnd->curr_blk, blk_buf.raw);
+      if (last_error != TFS_ERR_OK) {
+        goto out;
+      }
+    }
+
+    if (blk_len > len) {
+      blk_len = len;
+    }
+    memcpy(&blk_buf.data.data[blk_os], data, blk_len);
+
+    data += blk_len;
+    len -= blk_len;
+    ret += blk_len;
+
+    // allocate next block, if needed
+    if (blk_buf.data.next == 0 && len > 0) {
+      blk_buf.data.next = alloc_block();
+      if (last_error != TFS_ERR_OK) {
+        goto out;
+      }
+      seek_res = SEEK_APPEND;
+    }
+
+    // write block
+    drive_write_block(hnd->curr_blk, blk_buf.raw);
+    if (last_error != TFS_ERR_OK) {
+      goto out;
+    }
+
+    // update file size
+    if ((offset + ret) > hnd->size) {
+      hnd->size = offset + ret;
+    }
+
+    // stop, if we have no next block
+    if (blk_buf.data.next == 0) {
+      break;
+    }
+
+    // block not completely written
+    // stop here, do not skip to next block
+    if ((blk_os + blk_len) < TFS_DATA_LEN) {
+      break;
+    }
+
+    // go to next block
+    hnd->curr_blk = blk_buf.data.next;
+    hnd->curr_pos += TFS_DATA_LEN;
+    if (seek_res == SEEK_APPEND) {
+      blk_buf.data.prev = blk_buf.data.next;
+      blk_buf.data.next = 0;
+    }
+
+    blk_os = 0;
+    blk_len = TFS_DATA_LEN;
+  }
+
+  // read file's directory block
+  drive_read_block(hnd->dir_blk, blk_buf.raw);
+  if (last_error != TFS_ERR_OK) {
+    goto out;
+  }
+
+  // update item
+  hnd->dir_item->blk = hnd->first_blk;
+  hnd->dir_item->size = hnd->size;
+  drive_write_block(loaded_dir_blk, blk_buf.raw);
+
+out:
+  drive_deselect();
+  return ret;
+
+}
+
+uint32_t tfs_read(int8_t fd, uint8_t *data, uint32_t len, uint32_t offset) {
+  TFS_FILEHANDLE *hnd;
+  uint8_t seek_res;
+  uint32_t blk_os, blk_len;
+
+  uint32_t ret = 0;
+
+  last_error = TFS_ERR_OK;
+  drive_select();
+
+  // check fd range
+  if (fd < 0 && fd >= TFS_MAX_FDS) {
+    last_error = TFS_ERR_INVAL_FD;
+    goto out;
+  }
+
+  // check for valid handle
+  hnd = &handles[fd];
+  if (hnd->usage_count <= 0) {
+    last_error = TFS_ERR_INVAL_FD;
+    goto out;
+  }
+
+  // check file length
+  if (offset > hnd->size) {
+    goto out;
+  }
+
+  // limit length to remaining file size
+  blk_len = hnd->size - offset;
+  if (len > blk_len) {
+    len = blk_len;
+  }
+
+  // seek to position
+  seek_res = tfs_seek(hnd, offset, 0);
+  if (last_error != TFS_ERR_OK) {
+    goto out;
+  }
+  if (seek_res == SEEK_EOF) {
+    goto out;
+  }
+
+  // nothing to read?
+  if (len == 0) {
+    goto out;
+  }
+
+  // read data
+  blk_os = offset - hnd->curr_pos;
+  blk_len = TFS_DATA_LEN - blk_os;
+  while (len > 0) {
+    drive_read_block(hnd->curr_blk, blk_buf.raw);
+    if (last_error != TFS_ERR_OK) {
+      goto out;
+    }
+
+    if (blk_len > len) {
+      blk_len = len;
+    }
+
+    memcpy(data, &blk_buf.data.data[blk_os], blk_len);
+    data += blk_len;
+    len -= blk_len;
+    ret += blk_len;
+
+    // stop, if we have no next block
+    // this is an error, if we have bytes left to read
+    if (blk_buf.data.next == 0) {
+      if (len > 0) {
+        last_error = TFS_ERR_UNEXP_EOF;
+        goto out;
+      }
+      break;
+    }
+
+    // block not completely read
+    // stop here, do not skip to next block
+    if ((blk_os + blk_len) < TFS_DATA_LEN) {
+      break;
+    }
+
+    // go to next block
+    hnd->curr_blk = blk_buf.data.next;
+    hnd->curr_pos += TFS_DATA_LEN;
+    blk_os = 0;
+    blk_len = TFS_DATA_LEN;
+  }
+
+out:
+  drive_deselect();
+  return ret;
+}
+
+#endif
 

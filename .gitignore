@@ -11,4 +11,5 @@ fstest
 *.lk
 *.hex
 *.bin
-
+/linux/mkfs.tfs
+/linux/tfs_fuse

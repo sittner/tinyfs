@@ -15,7 +15,7 @@ AS = sdasz80
 ASFLAGS = -plosgff
 
 MFLAGS := -mz80 --opt-code-size --reserve-regs-iy --constseg CDATA
-CFLAGS := -I.. -DLITTLE_ENDIAN=1
+CFLAGS := -I. -I.. -DLITTLE_ENDIAN=1 -DTFS_ENABLE_FORMAT
 LFLAGS := --code-loc 0x2000 --data-loc 0xf800 "-Wl-b _CDATA = 0x8000" --no-std-crt0
 
 all: $(ROMHEX) showmem

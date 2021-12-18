@@ -1,24 +1,24 @@
 MKFS_TARGET := mkfs.tfs
-MKFS_SRCS := mkfs.c drive.c
-MKFS_HEADERS := ../filesys.h drive.h
+MKFS_SRCS := mkfs.c drive.c err_handler.c ../filesys.c
+MKFS_HEADERS := drive.h err_handler.h filesys_conf.h ../filesys.h
 MKFS_OBJS := $(patsubst ../%,%,$(patsubst %.c,%.o,$(MKFS_SRCS)))
 
-TARGET := fstest
-SOURCES := main.c ../filesys.c drive.c
-HEADERS := ../filesys.h drive.h
-OBJECTS := $(patsubst ../%,%,$(patsubst %.c,%.o,$(SOURCES)))
+TFS_TARGET := tfs_fuse
+TFS_SRCS := tfs_fuse.c drive.c err_handler.c ../filesys.c
+TFS_HEADERS := drive.h err_handler.h filesys_conf.h ../filesys.h
+TFS_OBJS := $(patsubst ../%,%,$(patsubst %.c,%.o,$(TFS_SRCS)))
 
 CC = gcc
-CFLAGS = -Wall -I..
+CFLAGS = -Wall -g -I. -I.. -D_FILE_OFFSET_BITS=64 -DFUSE_USE_VERSION=26
 LFLAGS =
 
-all: $(MKFS_TARGET) $(TARGET)
+all: $(MKFS_TARGET) $(TFS_TARGET)
 
 $(MKFS_TARGET): $(MKFS_OBJS)
 	$(CC) -o $@ $(MKFS_OBJS)
 
-$(TARGET): $(OBJECTS)
-	$(CC) -o $@ $(OBJECTS)
+$(TFS_TARGET): $(TFS_OBJS)
+	$(CC) -o $@ $(TFS_OBJS) -lfuse
 
 %.o: ../%.c $(HEADERS)
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -28,8 +28,7 @@ $(TARGET): $(OBJECTS)
 
 clean:
 	rm -f $(MKFS_TAGKET) $(MKFS_OBJS)
-	rm -f $(OBJECTS)
-	rm -f $(TARGET)
+	rm -f $(TFS_TAGKET) $(TFS_OBJS)
 
 .PHONY: all clean
 
