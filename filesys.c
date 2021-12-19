@@ -42,10 +42,7 @@ typedef struct {
   TFS_DIR_ITEM *dir_item;
   uint32_t size;
   uint32_t first_blk;
-  uint32_t prealloc_blk;
   uint32_t curr_blk;
-  uint32_t prev_blk;
-  uint32_t next_blk;
   uint32_t curr_pos;
 } TFS_FILEHANDLE;
 
@@ -56,13 +53,9 @@ static TFS_FILEHANDLE handles[TFS_MAX_FDS];
 #define SEEK_EOF    2
 #define SEEK_APPEND 3
 
-#define SEEK_FLAG_APPEND    (1 << 0)
-#define SEEK_FLAG_PREALLOC  (1 << 1)
-
 static void init_pos(TFS_FILEHANDLE *hnd);
-static void read_current_block(TFS_FILEHANDLE *hnd);
 static void update_dir_item(TFS_FILEHANDLE *hnd);
-static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t flags);
+static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append);
 
 #endif
 
@@ -964,25 +957,7 @@ out:
 
 static void init_pos(TFS_FILEHANDLE *hnd) {
   hnd->curr_blk = hnd->first_blk;
-  hnd->prev_blk = 0;
-  hnd->next_blk = 0;
   hnd->curr_pos = 0;
-}
-
-static void read_current_block(TFS_FILEHANDLE *hnd) {
-  if (hnd->curr_blk == 0) {
-    init_pos(hnd);
-    return;
-  }
-
-  drive_read_block(hnd->curr_blk, blk_buf.raw);
-  if (last_error != TFS_ERR_OK) {
-    init_pos(hnd);
-    return;
-  }
-
-  hnd->prev_blk = blk_buf.data.prev;
-  hnd->next_blk = blk_buf.data.next;
 }
 
 static void update_dir_item(TFS_FILEHANDLE *hnd) {
@@ -998,49 +973,49 @@ static void update_dir_item(TFS_FILEHANDLE *hnd) {
   drive_write_block(hnd->dir_blk, blk_buf.raw);
 }
 
-static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t flags) {
-  // go to start position
-  if (pos == 0) {
-    init_pos(hnd);
-  }
+static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append) {
+  uint32_t last_blk = 0;
+  uint32_t last_pos = 0;
 
-  // recover from invalid state
-  if (hnd->curr_pos > 0 && hnd->curr_blk == 0 && hnd->prev_blk == 0) {
+  // go to start position
+  if (pos == 0 || hnd->curr_blk == 0) {
     init_pos(hnd);
   }
 
   // seek backward, till we are in requested block
   while (hnd->curr_blk != 0 && hnd->curr_pos > pos) {
-    if (hnd->prev_blk == 0) {
-      read_current_block(hnd);
-      if (last_error != TFS_ERR_OK) {
-        return SEEK_ERROR;
-      }
+    drive_read_block(hnd->curr_blk, blk_buf.raw);
+    if (last_error != TFS_ERR_OK) {
+      return SEEK_ERROR;
     }
 
-    hnd->next_blk = hnd->curr_blk;
-    hnd->curr_blk = hnd->prev_blk;
-    hnd->prev_blk = 0;
+    // fail, if we have no prev block
+    if (blk_buf.data.prev == 0) {
+      last_error = TFS_ERR_UNEXP_EOF;
+      return SEEK_ERROR;
+    }
+
+    hnd->curr_blk = blk_buf.data.prev;
     hnd->curr_pos -= TFS_DATA_LEN;
   }
 
   // seek forward, till we are in requested block
-  while (hnd->curr_blk != 0 && hnd->curr_blk != hnd->prealloc_blk && (hnd->curr_pos + TFS_DATA_LEN) <= pos) {
-    if (hnd->next_blk == 0) {
-      read_current_block(hnd);
-      if (last_error != TFS_ERR_OK) {
-        return SEEK_ERROR;
-      }
+  while (hnd->curr_blk != 0 && (hnd->curr_pos + TFS_DATA_LEN) <= pos) {
+    drive_read_block(hnd->curr_blk, blk_buf.raw);
+    if (last_error != TFS_ERR_OK) {
+      return SEEK_ERROR;
     }
 
-    hnd->prev_blk = hnd->curr_blk;
-    hnd->curr_blk = hnd->next_blk;
-    hnd->next_blk = 0;
+    // remember last valid block
+    last_blk = hnd->curr_blk;
+    last_pos = hnd->curr_pos;
+
+    hnd->curr_blk = blk_buf.data.next;
     hnd->curr_pos += TFS_DATA_LEN;
   }
 
-  if (hnd->curr_blk != 0 && hnd->curr_blk != hnd->prealloc_blk) {
-    read_current_block(hnd);
+  if (hnd->curr_blk != 0) {
+    drive_read_block(hnd->curr_blk, blk_buf.raw);
     if (last_error != TFS_ERR_OK) {
       return SEEK_ERROR;
     }
@@ -1049,7 +1024,7 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t flags) {
   }
 
   // now append is needed
-  if ((flags & SEEK_FLAG_APPEND) == 0) {
+  if (!append) {
     return SEEK_EOF;
   }
 
@@ -1061,27 +1036,15 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t flags) {
       return SEEK_ERROR;
     }
 
+    memset(blk_buf.raw, 0, TFS_BLOCKSIZE);
+
     init_pos(hnd);
+    last_blk = hnd->curr_blk;
+    last_pos = hnd->curr_pos;
   }
 
-  // we are on EOF, so append to prev block
-  if (hnd->curr_blk == 0) {
-    hnd->curr_blk = hnd->prev_blk;
-    hnd->curr_pos -= TFS_DATA_LEN;
-    read_current_block(hnd);
-    if (last_error != TFS_ERR_OK) {
-      return SEEK_ERROR;
-    }
-  }
-
-  // use preallocated block
-  if (hnd->curr_blk == hnd->prealloc_blk) {
-    hnd->prealloc_blk = 0;
-    memset(blk_buf.data.data, 0, TFS_DATA_LEN);
-    blk_buf.data.prev = hnd->prev_blk;
-    blk_buf.data.next = 0;
-  }
-
+  hnd->curr_blk = last_blk;
+  hnd->curr_pos = last_pos;
   while ((hnd->curr_pos + TFS_DATA_LEN) <= pos) {
     // allocate next block
     blk_buf.data.next = alloc_block();
@@ -1103,18 +1066,6 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t flags) {
     blk_buf.data.next = 0;
     hnd->curr_pos += TFS_DATA_LEN;
   }
-
-  if ((flags & SEEK_FLAG_PREALLOC) != 0) {
-    blk_buf.data.next = alloc_block();
-    if (last_error != TFS_ERR_OK) {
-      return SEEK_ERROR;
-    }
-
-    hnd->prealloc_blk = blk_buf.data.next;
-  }
-
-  hnd->prev_blk = blk_buf.data.prev;
-  hnd->next_blk = blk_buf.data.next;
 
   // caller must write the current datablock and call update_dir_item
   return SEEK_APPEND;
@@ -1206,7 +1157,6 @@ int8_t tfs_open(const char *name) {
   hnd->dir_item = item;
   hnd->size = item->size;
   hnd->first_blk = item->blk;
-  hnd->prealloc_blk = 0;
   init_pos(hnd);
 
 out:
@@ -1239,6 +1189,7 @@ void tfs_close(int8_t fd) {
 void tfs_trunc(int8_t fd, uint32_t size) {
   TFS_FILEHANDLE *hnd;
   uint8_t seek_res;
+  uint32_t free_from = 0;
 
   last_error = TFS_ERR_OK;
   drive_select();
@@ -1267,18 +1218,19 @@ void tfs_trunc(int8_t fd, uint32_t size) {
     init_pos(hnd);
   } else {
     // expand file, if required
-    seek_res = seek(hnd, size, SEEK_FLAG_APPEND);
+    seek_res = seek(hnd, size, 1);
     if (last_error != TFS_ERR_OK) {
       goto out;
     }
 
     // check, if we have to free remaining blocks
     if (seek_res == SEEK_OK) {
+      free_from = blk_buf.data.next;
       blk_buf.data.next = 0;
     }
 
     // save the last block
-    if (seek_res == SEEK_APPEND || hnd->next_blk != 0) {
+    if (seek_res == SEEK_APPEND || free_from != 0) {
       drive_write_block(hnd->curr_blk, blk_buf.raw);
       if (last_error != TFS_ERR_OK) {
         goto out;
@@ -1286,15 +1238,13 @@ void tfs_trunc(int8_t fd, uint32_t size) {
     }
 
     // free remaining blocks
-    free_file_blocks(hnd->next_blk);
+    free_file_blocks(free_from);
     if (last_error != TFS_ERR_OK) {
       goto out;
     }
-
-    hnd->next_blk = 0;
   }
 
-  // update item
+  // update directory
   update_dir_item(hnd);
 
 out:
@@ -1304,8 +1254,8 @@ out:
 uint32_t tfs_write(int8_t fd, const uint8_t *data, uint32_t len, uint32_t offset) {
   TFS_FILEHANDLE *hnd;
   uint32_t blk_os, blk_len;
+  uint8_t append = 0;
   uint8_t update_item = 0;
-  uint8_t seek_flags;
   uint32_t ret = 0;
 
   last_error = TFS_ERR_OK;
@@ -1324,34 +1274,43 @@ uint32_t tfs_write(int8_t fd, const uint8_t *data, uint32_t len, uint32_t offset
     goto out;
   }
 
+  // seek to position
+  if (seek(hnd, offset, 1) == SEEK_APPEND) {
+    append = 1;
+    update_item = 1;
+  }
+  if (last_error != TFS_ERR_OK) {
+    goto out;
+  }
+
+  // something to write?
+  if (len == 0) {
+    goto update;
+  }
+
   // write data
-  while (len > 0) {
-    blk_os = offset % TFS_DATA_LEN;
-    blk_len = TFS_DATA_LEN - blk_os;
+  blk_os = offset - hnd->curr_pos;
+  blk_len = TFS_DATA_LEN - blk_os;
+  while (1) {
     if (blk_len > len) {
       blk_len = len;
     }
-
-    len -= blk_len;
-
-    seek_flags = SEEK_FLAG_APPEND;
-    if (len > 0) {
-      seek_flags |= SEEK_FLAG_PREALLOC;
-    }
-
-    // seek to position, append block if required
-    if (seek(hnd, offset, seek_flags) == SEEK_APPEND) {
-      update_item = 1;
-    }
-    if (last_error != TFS_ERR_OK) {
-      goto out;
-    }
-
-    memcpy(&blk_buf.data.data[blk_os], data, blk_len);
+    memcpy(blk_buf.data.data + blk_os, data, blk_len);
 
     data += blk_len;
+    len -= blk_len;
     offset += blk_len;
     ret += blk_len;
+
+    // prealloc next block
+    if (len > 0 && blk_buf.data.next == 0) {
+      // allocate next block
+      blk_buf.data.next = alloc_block();
+      if (last_error != TFS_ERR_OK) {
+        goto out;
+      }
+      append = 1;
+    }
 
     // write block
     drive_write_block(hnd->curr_blk, blk_buf.raw);
@@ -1364,9 +1323,33 @@ uint32_t tfs_write(int8_t fd, const uint8_t *data, uint32_t len, uint32_t offset
       hnd->size = offset;
       update_item = 1;
     }
+
+    if (len == 0) {
+      break;
+    }
+
+    // get next block
+    if (append) {
+      blk_buf.data.prev = hnd->curr_blk;
+      hnd->curr_blk = blk_buf.data.next;
+      blk_buf.data.next = 0;
+      memset(blk_buf.data.data, 0, TFS_DATA_LEN);
+    } else {
+      hnd->curr_blk = blk_buf.data.next;
+      drive_read_block(hnd->curr_blk, blk_buf.raw);
+      if (last_error != TFS_ERR_OK) {
+        return SEEK_ERROR;
+      }
+    }
+    hnd->curr_pos += TFS_DATA_LEN;
+
+    // reset start offset
+    blk_os = 0;
+    blk_len = TFS_DATA_LEN;
   }
 
-  // update item
+update:
+  // update directry
   if (update_item) {
     update_dir_item(hnd);
   }
@@ -1410,27 +1393,52 @@ uint32_t tfs_read(int8_t fd, uint8_t *data, uint32_t len, uint32_t offset) {
     len = blk_len;
   }
 
-  // read data
-  while (len > 0) {
-    // seek to position
-    if (seek(hnd, offset, 0) == SEEK_EOF) {
-      goto out;
-    }
-    if (last_error != TFS_ERR_OK) {
-      goto out;
-    }
+  // seek to position
+  if (seek(hnd, offset, 0) == SEEK_EOF) {
+    goto out;
+  }
+  if (last_error != TFS_ERR_OK) {
+    goto out;
+  }
 
-    blk_os = offset - hnd->curr_pos;
-    blk_len = TFS_DATA_LEN - blk_os;
+  // something to read?
+  if (len == 0) {
+    goto out;
+  }
+
+  // read data
+  blk_os = offset - hnd->curr_pos;
+  blk_len = TFS_DATA_LEN - blk_os;
+  while (1) {
     if (blk_len > len) {
       blk_len = len;
     }
-    memcpy(data, &blk_buf.data.data[blk_os], blk_len);
+    memcpy(data, blk_buf.data.data + blk_os, blk_len);
 
     data += blk_len;
     len -= blk_len;
-    offset += blk_len;
     ret += blk_len;
+
+    if (len == 0) {
+      break;
+    }
+
+    // get next block
+    hnd->curr_blk = blk_buf.data.next;
+    hnd->curr_pos += TFS_DATA_LEN;
+    if (hnd->curr_blk == 0) {
+      break;
+    }
+
+    // read block
+    drive_read_block(hnd->curr_blk, blk_buf.raw);
+    if (last_error != TFS_ERR_OK) {
+      return SEEK_ERROR;
+    }
+
+    // reset start offset
+    blk_os = 0;
+    blk_len = TFS_DATA_LEN;
   }
 
 out:
