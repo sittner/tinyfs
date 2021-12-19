@@ -9,7 +9,7 @@ TFS_HEADERS := drive.h err_handler.h filesys_conf.h ../filesys.h
 TFS_OBJS := $(patsubst ../%,%,$(patsubst %.c,%.o,$(TFS_SRCS)))
 
 CC = gcc
-CFLAGS = -Wall -g -I. -I.. -D_FILE_OFFSET_BITS=64 -DFUSE_USE_VERSION=26
+CFLAGS = -Wall -I. -I.. -D_FILE_OFFSET_BITS=64 -DFUSE_USE_VERSION=26
 LFLAGS =
 
 all: $(MKFS_TARGET) $(TFS_TARGET)
