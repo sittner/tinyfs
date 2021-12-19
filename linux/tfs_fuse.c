@@ -212,7 +212,7 @@ static int op_rename(const char *path, const char *newpath) {
   if (old == NULL) {
     return check_error("op_rename:travel_path");
   }
-  if (strlen(path) > TFS_NAME_LEN) {
+  if (strlen(old) > TFS_NAME_LEN) {
     return -ENAMETOOLONG;
   }
 
@@ -223,6 +223,9 @@ static int op_rename(const char *path, const char *newpath) {
   newpath += (old - path);
   if (strchr(newpath, '/') != NULL) {
     return -EINVAL;
+  }
+  if (strlen(newpath) > TFS_NAME_LEN) {
+    return -ENAMETOOLONG;
   }
 
   tfs_rename(old, newpath);
