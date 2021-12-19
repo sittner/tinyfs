@@ -40,6 +40,11 @@ static const char *travel_path(const char *path) {
     if (path[pos] == '/') {
       rw[pos]= 0;
       if (rw[tok] != 0) {
+        if (strlen(&rw[tok]) > TFS_NAME_LEN) {
+          last_error = TFS_ERR_NOT_EXIST;
+          free(rw);
+          return NULL;
+        }
         tfs_change_dir(&rw[tok]);
         if (last_error != TFS_ERR_OK) {
           free(rw);
@@ -87,6 +92,9 @@ static int op_getattr(const char *path, struct stat *st) {
   if (path == NULL) {
     return check_error("op_getattr:travel_path");
   }
+  if (strlen(path) > TFS_NAME_LEN) {
+    return -ENAMETOOLONG;
+  }
 
   item = tfs_stat(path);
   err = check_error("op_getattr:tfs_getattr");
@@ -111,6 +119,9 @@ static int op_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
   path = travel_path(path);
   if (path == NULL) {
     return check_error("op_readdir:travel_path");
+  }
+  if (strlen(path) > TFS_NAME_LEN) {
+    return -ENAMETOOLONG;
   }
 
   if (path[0] != 0) {
@@ -140,6 +151,9 @@ static int op_mkdir(const char *path, mode_t mode) {
   if (path == NULL) {
     return check_error("op_mkdir:travel_path");
   }
+  if (strlen(path) > TFS_NAME_LEN) {
+    return -ENAMETOOLONG;
+  }
 
   tfs_create_dir(path);
   err = check_error("op_mkdir:tfs_create_dir");
@@ -156,6 +170,9 @@ static int op_unlink(const char *path) {
   path = travel_path(path);
   if (path == NULL) {
     return check_error("op_unlink:travel_path");
+  }
+  if (strlen(path) > TFS_NAME_LEN) {
+    return -ENAMETOOLONG;
   }
 
   tfs_delete(path, TFS_DIR_ITEM_FILE);
@@ -174,6 +191,9 @@ static int op_rmdir(const char *path) {
   if (path == NULL) {
     return check_error("op_rmdir:travel_path");
   }
+  if (strlen(path) > TFS_NAME_LEN) {
+    return -ENAMETOOLONG;
+  }
 
   tfs_delete(path, TFS_DIR_ITEM_DIR);
   err = check_error("op_rmdir:tfs_delete");
@@ -191,6 +211,9 @@ static int op_rename(const char *path, const char *newpath) {
   old = travel_path(path);
   if (old == NULL) {
     return check_error("op_rename:travel_path");
+  }
+  if (strlen(path) > TFS_NAME_LEN) {
+    return -ENAMETOOLONG;
   }
 
   // allow rename only in the same directory
@@ -240,6 +263,9 @@ static int op_mknod(const char *path, mode_t mode, dev_t dev) {
   if (path == NULL) {
     return check_error("op_mknod:travel_path");
   }
+  if (strlen(path) > TFS_NAME_LEN) {
+    return -ENAMETOOLONG;
+  }
 
   tfs_write_file(path, NULL, 0, 0);
   err = check_error("op_mknod:tfs_write_file");
@@ -257,6 +283,9 @@ static int op_open(const char *path, struct fuse_file_info *fi) {
   if (path == NULL) {
     return check_error("op_open:travel_path");
   }
+  if (strlen(path) > TFS_NAME_LEN) {
+    return -ENAMETOOLONG;
+  }
 
   fi->fh = tfs_open(path);
   err = check_error("op_open:tfs_open");
@@ -273,6 +302,9 @@ static int op_truncate(const char *path, off_t newsize) {
   path = travel_path(path);
   if (path == NULL) {
     return check_error("op_truncate:travel_path");
+  }
+  if (strlen(path) > TFS_NAME_LEN) {
+    return -ENAMETOOLONG;
   }
 
   fh = tfs_open(path);
