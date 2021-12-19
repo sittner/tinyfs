@@ -718,9 +718,7 @@ void tfs_write_file(const char *name, const uint8_t *data, uint32_t len, uint8_t
 
       // allocate next data block
       blk_buf.data.next = alloc_block();
-      if (last_error != TFS_ERR_OK) {
-        goto out;
-      }
+      // if error -> try to write the last data block, error is handled after write
     } else {
       blk_len = len;
       len = 0;
@@ -1048,9 +1046,7 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append) {
   while ((hnd->curr_pos + TFS_DATA_LEN) <= pos) {
     // allocate next block
     blk_buf.data.next = alloc_block();
-    if (last_error != TFS_ERR_OK) {
-      return SEEK_ERROR;
-    }
+    // if error -> try to write the last data block, error is handled after write
 
     // update pointer
     drive_write_block(hnd->curr_blk, blk_buf.raw);
@@ -1306,9 +1302,7 @@ uint32_t tfs_write(int8_t fd, const uint8_t *data, uint32_t len, uint32_t offset
     if (len > 0 && blk_buf.data.next == 0) {
       // allocate next block
       blk_buf.data.next = alloc_block();
-      if (last_error != TFS_ERR_OK) {
-        goto out;
-      }
+      // if error -> try to write the last data block, error is handled after write
       append = 1;
     }
 
