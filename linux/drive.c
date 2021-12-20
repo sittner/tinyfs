@@ -70,8 +70,6 @@ void drive_read_block(uint32_t blkno, uint8_t *data) {
     last_error = TFS_ERR_IO;
     return;
   }
-
-  last_error = TFS_ERR_OK;
 }
 
 void drive_write_block(uint32_t blkno, const uint8_t *data) {
@@ -89,8 +87,6 @@ void drive_write_block(uint32_t blkno, const uint8_t *data) {
     last_error = TFS_ERR_IO;
     return;
   }
-
-  last_error = TFS_ERR_OK;
 }
 
 void drive_select(void) {
