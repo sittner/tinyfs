@@ -509,9 +509,11 @@ uint32_t tfs_get_used(void) {
 
     // count allocated blocks
     for (i = 0, p = bitmap_blk; i < TFS_BLOCKSIZE; i++, p++) {
-      for (mask = 1; mask != 0; mask <<= 1) {
-        if ((*p & mask) != 0) {
-          used++;
+      if (*p > 0) {
+        for (mask = 1; mask != 0; mask <<= 1) {
+          if ((*p & mask) != 0) {
+            used++;
+          }
         }
       }
     }
