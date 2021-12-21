@@ -175,7 +175,6 @@ void show_error() {
   }
 
   term_clrscrn();
-  term_puts("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
   term_puts(error_msg[last_error - 1]);
 }
 
@@ -216,7 +215,6 @@ uint8_t tfs_dir_handler(const TFS_DIR_ITEM *item) {
         break;
       }
       if (key == TERM_KEY_SPC) {
-        term_clrscrn();
         return 0;
       }
     }
