@@ -1719,8 +1719,8 @@ F 3 "http://www.ti.com/lit/gpn/sn74ls02" H 2200 1450 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	6350 3700 6200 3700
-Text Label 6200 3700 2    50   ~ 0
+	6350 3700 6300 3700
+Text Label 6200 3900 2    50   ~ 0
 nMREQ
 Text Label 7750 3700 0    50   ~ 0
 nCS_RAM
@@ -1800,75 +1800,44 @@ Wire Wire Line
 	2900 1750 2900 1850
 Text Label 2900 1850 3    50   ~ 0
 nRESET
-Wire Wire Line
-	7200 4350 7250 4350
-Connection ~ 7200 4350
-Wire Wire Line
-	7200 4750 7150 4750
-Wire Wire Line
-	7200 4350 7200 4750
-Wire Wire Line
-	7150 4350 7200 4350
 $Comp
 L power:+5V #PWR033
 U 1 1 621A82B9
-P 7250 4350
-F 0 "#PWR033" H 7250 4200 50  0001 C CNN
-F 1 "+5V" H 7265 4523 50  0000 C CNN
-F 2 "" H 7250 4350 50  0001 C CNN
-F 3 "" H 7250 4350 50  0001 C CNN
-	1    7250 4350
-	0    1    1    0   
-$EndComp
-$Comp
-L Jumper:Jumper_2_Open JP4
-U 1 1 621645C3
-P 6950 4750
-F 0 "JP4" H 6950 4985 50  0000 C CNN
-F 1 "DIS_INT_RAM" H 6950 4894 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 6950 4750 50  0001 C CNN
-F 3 "~" H 6950 4750 50  0001 C CNN
-	1    6950 4750
-	1    0    0    -1  
-$EndComp
-$Comp
-L Jumper:Jumper_2_Open JP3
-U 1 1 62163E19
-P 6950 4350
-F 0 "JP3" H 6950 4585 50  0000 C CNN
-F 1 "DIS_INT_ROM" H 6950 4494 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 6950 4350 50  0001 C CNN
-F 3 "~" H 6950 4350 50  0001 C CNN
-	1    6950 4350
-	1    0    0    -1  
+P 6550 4350
+F 0 "#PWR033" H 6550 4200 50  0001 C CNN
+F 1 "+5V" H 6565 4523 50  0000 C CNN
+F 2 "" H 6550 4350 50  0001 C CNN
+F 3 "" H 6550 4350 50  0001 C CNN
+	1    6550 4350
+	0    -1   -1   0   
 $EndComp
 $Comp
 L power:GND #PWR032
 U 1 1 621617EA
-P 7150 5150
-F 0 "#PWR032" H 7150 4900 50  0001 C CNN
-F 1 "GND" H 7155 4977 50  0000 C CNN
-F 2 "" H 7150 5150 50  0001 C CNN
-F 3 "" H 7150 5150 50  0001 C CNN
-	1    7150 5150
+P 7000 5150
+F 0 "#PWR032" H 7000 4900 50  0001 C CNN
+F 1 "GND" H 7005 4977 50  0000 C CNN
+F 2 "" H 7000 5150 50  0001 C CNN
+F 3 "" H 7000 5150 50  0001 C CNN
+	1    7000 5150
 	0    -1   -1   0   
 $EndComp
 $Comp
 L Switch:SW_Push SW1
 U 1 1 62160E0C
-P 6950 5150
-F 0 "SW1" H 6950 5435 50  0000 C CNN
-F 1 "RESET" H 6950 5344 50  0000 C CNN
-F 2 "Button_Switch_THT:SW_PUSH_6mm" H 6950 5350 50  0001 C CNN
-F 3 "~" H 6950 5350 50  0001 C CNN
-	1    6950 5150
+P 6800 5150
+F 0 "SW1" H 6800 5435 50  0000 C CNN
+F 1 "RESET" H 6800 5344 50  0000 C CNN
+F 2 "Button_Switch_THT:SW_PUSH_6mm" H 6800 5350 50  0001 C CNN
+F 3 "~" H 6800 5350 50  0001 C CNN
+	1    6800 5150
 	1    0    0    -1  
 $EndComp
-Text Label 6750 5150 2    50   ~ 0
+Text Label 6600 5150 2    50   ~ 0
 nRESET
-Text Label 6750 4750 2    50   ~ 0
+Text Label 7050 4350 0    50   ~ 0
 nRAMCS_INT
-Text Label 6750 4350 2    50   ~ 0
+Text Label 7050 4700 0    50   ~ 0
 nROMCS_INT
 $Comp
 L Device:R R5
@@ -1907,7 +1876,7 @@ Connection ~ 7350 5500
 Wire Wire Line
 	7350 5900 7150 5900
 Connection ~ 7350 5900
-Text Label 6200 3150 2    50   ~ 0
+Text Label 6200 2950 2    50   ~ 0
 A14
 $Comp
 L 74xx:74LS00 U3
@@ -1920,8 +1889,6 @@ F 3 "http://www.ti.com/lit/gpn/sn74LS125" H 7350 3700 50  0001 C CNN
 	2    7350 3700
 	1    0    0    1   
 $EndComp
-Wire Wire Line
-	6200 3900 6350 3900
 $Comp
 L 74xx:74LS02 U4
 U 2 1 6220CB16
@@ -1959,7 +1926,7 @@ F 3 "http://www.ti.com/lit/gpn/sn74ls02" H 6650 3050 50  0001 C CNN
 	3    6650 3050
 	1    0    0    -1  
 $EndComp
-Text Label 6200 3900 2    50   ~ 0
+Text Label 6550 4700 2    50   ~ 0
 nRFSH
 Wire Wire Line
 	7050 3050 6950 3050
@@ -1974,8 +1941,6 @@ Wire Wire Line
 Wire Wire Line
 	6300 2950 6350 2950
 Connection ~ 6300 3150
-Wire Wire Line
-	6300 3150 6200 3150
 Wire Wire Line
 	6950 3800 7000 3800
 Wire Wire Line
@@ -2198,4 +2163,44 @@ Wire Wire Line
 Connection ~ 4400 4850
 Wire Wire Line
 	4400 4850 4400 5300
+Wire Wire Line
+	6300 3700 6300 3900
+Wire Wire Line
+	6300 3900 6350 3900
+Wire Wire Line
+	6300 3900 6200 3900
+Connection ~ 6300 3900
+Wire Wire Line
+	6200 2950 6300 2950
+Connection ~ 6300 2950
+$Comp
+L Diode:BAT43 D2
+U 1 1 61F95B3A
+P 6800 4700
+F 0 "D2" H 6800 4917 50  0000 C CNN
+F 1 "BAT43" H 6800 4826 50  0000 C CNN
+F 2 "Diode_THT:D_DO-35_SOD27_P2.54mm_Vertical_AnodeUp" H 6800 4525 50  0001 C CNN
+F 3 "http://www.vishay.com/docs/85660/bat42.pdf" H 6800 4700 50  0001 C CNN
+	1    6800 4700
+	-1   0    0    -1  
+$EndComp
+Wire Wire Line
+	6550 4700 6650 4700
+Wire Wire Line
+	6950 4700 7050 4700
+$Comp
+L Jumper:SolderJumper_2_Bridged JP4
+U 1 1 61FC955F
+P 6800 4350
+F 0 "JP4" H 6800 4555 50  0000 C CNN
+F 1 "DIS_INT_RAM" H 6800 4464 50  0000 C CNN
+F 2 "Jumper:SolderJumper-2_P1.3mm_Bridged_RoundedPad1.0x1.5mm" H 6800 4350 50  0001 C CNN
+F 3 "~" H 6800 4350 50  0001 C CNN
+	1    6800 4350
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6550 4350 6650 4350
+Wire Wire Line
+	6950 4350 7050 4350
 $EndSCHEMATC
