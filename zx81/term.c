@@ -103,6 +103,8 @@ __asm
   ld (_DEBOUNCE), a
   call _ROM_DISPLAY_1
   ld hl,(_LAST_K)
+  ld a, #0xff
+  ld (_DEBOUNCE), a
 __endasm;
 }
 
