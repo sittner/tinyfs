@@ -12,14 +12,14 @@ static volatile uint8_t * __at 16404 E_LINE;
 
 static const char const *error_msg[] = {
   "no sd card",
-  "io error",
+  "i/o error",
   "disk full",
   "file allready exists",
   "file not exists",
   "dir not empty",
   "no filename",
   "invalid filename",
-  "unexp. eof"
+  "unexpected end of file"
 };
 
 static const char const *drive_types[] = {
