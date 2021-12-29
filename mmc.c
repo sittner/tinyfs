@@ -117,7 +117,7 @@ uint8_t drive_init(void) {
   drive_info.type = DRIVE_TYPE_MMC;
     
   // card needs 74 cycles minimum to start up
-  spi_read_block(tmp_buf, 10);
+  spi_dummy_transfer(10);
 
   // address card
   drive_select();
@@ -216,7 +216,7 @@ fail:
 
 void drive_select(void) {
   // Create 8 clock pulse before activating the card
-  spi_rec_byte();
+  spi_dummy_transfer(1);
 
   spi_select_drive();
 }
@@ -225,7 +225,7 @@ void drive_deselect(void) {
   spi_deselect_drive();
 
   // Create 80 clock pulse after releasing the card
-  spi_read_block(tmp_buf, 10);
+  spi_dummy_transfer(10);
 }
 
 static char hex_char(uint8_t val) {

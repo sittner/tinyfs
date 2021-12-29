@@ -71,3 +71,21 @@ __asm
 __endasm;
 }
 
+void spi_dummy_transfer(uint16_t len) {
+__asm
+  ld c, 4 (ix)
+  ld b, 5 (ix)
+00001$:
+  ld a, b
+  or a, c
+  jr Z, 00002$
+
+  ld a, #0xff
+  out (0xef), a
+
+  dec bc
+  jr 00001$
+00002$:
+__endasm;
+}
+

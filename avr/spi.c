@@ -95,3 +95,11 @@ void spi_write_block(const uint8_t *data, uint16_t len) {
   }
 }
 
+void spi_dummy_transfer(uint16_t len) {
+  for (; len > 0; len--) {
+    SPDR = 0xff;
+    while (!(SPSR & (1 << SPIF)));
+    SPSR &= ~(1 << SPIF);
+  }
+}
+
