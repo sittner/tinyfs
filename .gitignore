@@ -13,3 +13,7 @@ fstest
 *.bin
 /linux/mkfs.tfs
 /linux/tfs
+*-cache.lib
+*.kicad_pcb-bak
+*.sch-bak
+fp-info-cache
