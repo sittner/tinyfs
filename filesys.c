@@ -59,7 +59,7 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append);
 
 #endif
 
-#define TFS_BITMAP_BLK_INVAL  0xffff
+#define TFS_BITMAP_BLK_INVAL  0xffffffff
 #define TFS_BITMAP_BLK_COUNT  (TFS_BLOCKSIZE << 3)
 #define TFS_BITMAP_BLK_MASK   (TFS_BITMAP_BLK_COUNT - 1)
 #define TFS_BITMAP_BLK_SHIFT  (TFS_BLOCKSIZE_WIDTH + 3)
@@ -367,7 +367,6 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
 }
 
 void tfs_init(void) {
-  uint32_t last_blk;
 
 #ifdef TFS_EXTENDED_API
   memset(handles, 0, sizeof(handles));
@@ -376,9 +375,9 @@ void tfs_init(void) {
   last_error = TFS_ERR_OK;
   drive_select();
 
-  last_blk = drive_info.blk_count - 1;
-  last_bitmap_blk = GET_BITMAK_BLK(last_blk);
-  last_bitmap_len = (last_blk & TFS_BITMAP_BLK_MASK) + 1;
+  last_bitmap_blk = drive_info.blk_count - 1;
+  last_bitmap_len = (last_bitmap_len & TFS_BITMAP_BLK_MASK) + 1;
+  last_bitmap_blk = GET_BITMAK_BLK(last_bitmap_blk);
 
   load_bitmap(TFS_FIRST_BITMAP_BLK);
   if (last_error != TFS_ERR_OK) {
@@ -522,7 +521,8 @@ uint32_t tfs_get_used(void) {
     if (pos == last_bitmap_blk) {
       load_bitmap(TFS_FIRST_BITMAP_BLK);
       drive_deselect();
-      return used;
+      // blocks after dist end are marked as use, so substract them
+      return used - (TFS_BITMAP_BLK_COUNT - last_bitmap_len);
     }
 
     // next block
