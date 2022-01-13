@@ -11,7 +11,7 @@ fstest
 *.lk
 *.hex
 *.bin
-/linux/mkfs.tfs
+/linux/mktfs
 /linux/tfs
 *-cache.lib
 *.kicad_pcb-bak
