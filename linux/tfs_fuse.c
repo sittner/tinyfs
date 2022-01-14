@@ -16,6 +16,7 @@
 #include "err_handler.h"
 
 static uid_t my_uid;
+static gid_t my_gid;
 
 static const char *travel_path(const char *path) {
   char *rw;
@@ -79,7 +80,7 @@ static int op_getattr(const char *path, struct stat *st) {
   TFS_DIR_ITEM *item;
 
   st->st_uid = my_uid;
-  st->st_gid = my_uid;
+  st->st_gid = my_gid;
   st->st_nlink = 1;
 
   // handle root directory
@@ -428,6 +429,7 @@ int main(int argc, char **argv) {
   tfs_init();
 
   my_uid = getuid();
+  my_gid = getgid();
 
   // turn over control to fuse
   ret = fuse_main_st(argc - 1, &argv[1], &ops, sizeof(ops), NULL);
@@ -447,9 +449,10 @@ void tfs_format_progress(uint32_t pos, uint32_t max) {
 
 uint8_t tfs_dir_handler(TFS_READ_DIR_USERDATA filler, const TFS_DIR_ITEM *item) {
   char name[TFS_NAME_LEN + 1] =  { 0 };
+
   struct stat st = {
     .st_uid = my_uid,
-    .st_gid = my_uid,
+    .st_gid = my_gid,
     .st_nlink = 1
   };
 
