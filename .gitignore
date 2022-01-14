@@ -1,6 +1,4 @@
-*.img
 *.o
-fstest
 *.out
 *.asm
 *.lst
