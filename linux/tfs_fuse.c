@@ -416,15 +416,20 @@ int main(int argc, char **argv) {
   // start with a hyphen (this will break if you actually have a
   // rootpoint or mountpoint whose name starts with a hyphen, but so
   // will a zillion other programs)
-  if ((argc < 3) || (argv[1][0] == '-') || (argv[2][0] == '-')) {
-    fprintf(stderr, "usage:  tfs <device/image file> <mountpoint> [FUSE and mount options]\n");
+  if ((argc < 3) || (argv[argc - 2][0] == '-') || (argv[argc - 1][0] == '-')) {
+    fprintf(stderr, "usage:  tfs [FUSE and mount options] <device/image file> <mountpoint>\n");
     return 1;
   }
 
-  if (drive_open(argv[1]) < 0) {
+  // open device
+  if (drive_open(argv[argc - 2]) < 0) {
     fprintf(stderr, "Failed open device (error %d).\n", errno);
     return 1;
   }
+
+  // remove device parameter
+  argv[argc - 2] = argv[argc - 1];
+  argc--;
 
   tfs_init();
 
@@ -432,7 +437,7 @@ int main(int argc, char **argv) {
   my_gid = getgid();
 
   // turn over control to fuse
-  ret = fuse_main_st(argc - 1, &argv[1], &ops, sizeof(ops), NULL);
+  ret = fuse_main_st(argc, argv, &ops, sizeof(ops), NULL);
 
   drive_close();
 
