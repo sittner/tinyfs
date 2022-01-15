@@ -1134,8 +1134,8 @@ int8_t tfs_open(const char *name) {
 
   // search for existing handle
   for (fd = 0, hnd = handles; fd < TFS_MAX_FDS; fd++, hnd++) {
-    if (hnd->dir_blk == loaded_dir_blk && hnd->dir_item == item) {
-      hnd->usage_count++;
+    if (hnd->dir_blk == loaded_dir_blk && hnd->dir_item == item && hnd->usage_count > 0) {
+      (hnd->usage_count)++;
       goto out;
     }
   }
@@ -1181,7 +1181,7 @@ void tfs_close(int8_t fd) {
   }
 
   // decrement usage counter
-  hnd->usage_count--;
+  (hnd->usage_count)--;
 }
 
 void tfs_trunc(int8_t fd, uint32_t size) {
