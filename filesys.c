@@ -53,6 +53,7 @@ static TFS_FILEHANDLE handles[TFS_MAX_FDS];
 #define SEEK_EOF    2
 #define SEEK_APPEND 3
 
+static uint8_t item_usage_count(TFS_DIR_ITEM *item);
 static void init_pos(TFS_FILEHANDLE *hnd);
 static void update_dir_item(TFS_FILEHANDLE *hnd);
 static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append);
@@ -682,6 +683,15 @@ void tfs_write_file(const char *name, const uint8_t *data, uint32_t len, uint8_t
       last_error = TFS_ERR_FILE_EXIST;
       goto out;
     }
+
+#ifdef TFS_EXTENDED_API
+    // check if file is in use
+    if (item_usage_count(item) > 0) {
+      last_error = TFS_FILE_BUSY;
+      goto out;
+    }
+#endif
+
     // free old data blocks
     free_file_blocks(item->blk);
     if (last_error != TFS_ERR_OK) {
@@ -819,10 +829,6 @@ void tfs_delete(const char *name) {
   uint32_t pos;
   uint8_t i;
   TFS_DIR_ITEM *p;
-#ifdef TFS_EXTENDED_API
-  TFS_FILEHANDLE *hnd;
-  int8_t fd;
-#endif
 
   last_error = TFS_ERR_OK;
   drive_select();
@@ -847,11 +853,9 @@ void tfs_delete(const char *name) {
   }
 
   // check if file is in use
-  for (fd = 0, hnd = handles; fd < TFS_MAX_FDS; fd++, hnd++) {
-    if (hnd->dir_blk == loaded_dir_blk && hnd->dir_item == item && hnd->usage_count > 0) {
-      last_error = TFS_FILE_BUSY;
-      goto out;
-    }
+  if (item_usage_count(item) > 0) {
+    last_error = TFS_FILE_BUSY;
+    goto out;
   }
 #endif
 
@@ -954,6 +958,19 @@ out:
 }
 
 #ifdef TFS_EXTENDED_API
+
+static uint8_t item_usage_count(TFS_DIR_ITEM *item) {
+  TFS_FILEHANDLE *hnd;
+  int8_t fd;
+
+  for (fd = 0, hnd = handles; fd < TFS_MAX_FDS; fd++, hnd++) {
+    if (hnd->dir_blk == loaded_dir_blk && hnd->dir_item == item) {
+      return hnd->usage_count;
+    }
+  }
+
+  return 0;
+}
 
 static void init_pos(TFS_FILEHANDLE *hnd) {
   hnd->curr_blk = hnd->first_blk;
