@@ -244,3 +244,24 @@ static void show_drive_info(uint8_t show_used) {
   }
 }
 
+uint8_t filename_cmp(const char *ref, const char *cmp) {
+  uint8_t i;
+  char c;
+
+  for (i = 0; i < TFS_NAME_LEN; ref++, cmp++, i++) {
+    c = *cmp;
+    // ref is always lowercase, so convert cmp, if needed
+    if (c >= 'A' && c <= 'Z') {
+      c = c - 'A' + 'a';
+    }
+    if (c != *ref) {
+      return 0;
+    }
+    if (c == 0) {
+      return 1;
+    }
+  }
+
+  return (*ref == 0);
+}
+

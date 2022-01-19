@@ -65,6 +65,10 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append);
 
 #define GET_BITMAK_BLK(x) ((x) & ~TFS_BITMAP_BLK_MASK)
 
+#ifndef TFS_FILENAME_CMP
+#define TFS_FILENAME_CMP(ref, cmp) (strncmp(ref, cmp, TFS_NAME_LEN) == 0)
+#endif
+
 static uint32_t last_bitmap_blk;
 static uint16_t last_bitmap_len;
 static uint32_t loaded_bitmap_blk;
@@ -295,7 +299,7 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
         }
       } else {
         // check filename
-        if (strncmp(name, p->name, TFS_NAME_LEN) == 0) {
+        if (TFS_FILENAME_CMP(name, p->name)) {
           return p;
         }
       }
