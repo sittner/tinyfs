@@ -32,8 +32,6 @@ typedef union {
 TFS_DRIVE_INFO drive_info;
 uint8_t last_error;
 
-static const char *invalid_names[] = { "/", "..", NULL };
-
 #ifdef TFS_EXTENDED_API
 
 typedef struct {
@@ -268,7 +266,6 @@ static void write_dir_cleanup(void) {
 
 static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
   uint32_t pos = current_dir_blk;
-  const char * const *inval;
   uint8_t i;
   TFS_DIR_ITEM *p;
   uint32_t free_blk = 0;
@@ -278,14 +275,6 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
   if (*name == 0) {
     last_error = TFS_ERR_NO_NAME;
     return NULL;
-  }
-
-  // check for invalid prefix
-  for (inval = invalid_names; *inval != NULL; inval++) {
-    if (strcmp(name, *inval) == 0) {
-      last_error = TFS_ERR_NAME_INVAL;
-      return NULL;
-    }
   }
 
   while (1) {
@@ -574,31 +563,35 @@ out:
   return done;
 }
 
+void tfs_change_dir_root(void) {
+  current_dir_blk = TFS_ROOT_DIR_BLK;
+}
+
+void tfs_change_dir_parent(void) {
+  last_error = TFS_ERR_OK;
+  drive_select();
+
+  drive_read_block(current_dir_blk, blk_buf.raw);
+  if (last_error != TFS_ERR_OK) {
+    goto out;
+  }
+
+  if (blk_buf.dir.parent == 0) {
+    last_error = TFS_ERR_NOT_EXIST;
+    goto out;
+  }
+
+  current_dir_blk = blk_buf.dir.parent;
+
+out:
+  drive_deselect();
+}
+
 void tfs_change_dir(const char *name) {
   TFS_DIR_ITEM *item;
 
   last_error = TFS_ERR_OK;
   drive_select();
-
-  // go to root dir
-  if (strcmp(name, "/") == 0) {
-    current_dir_blk = TFS_ROOT_DIR_BLK;
-    goto out;
-  }
-
-  // go to parent dir
-  if (strcmp(name, "..") == 0) {
-    drive_read_block(current_dir_blk, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
-      goto out;
-    }
-    if (blk_buf.dir.parent == 0) {
-      last_error = TFS_ERR_NOT_EXIST;
-      goto out;
-    }
-    current_dir_blk = blk_buf.dir.parent;
-    goto out;
-  }
 
   // search for dir name
   item = find_file(name, 0);

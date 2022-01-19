@@ -195,7 +195,13 @@ int main(void) {
     }
 
     if (strcmp(cmd, "cd") == 0) {
-      tfs_change_dir(params);
+      if (strcmp(params, "/") == 0) {
+        tfs_change_dir_root();
+      } else if (strcmp(params, "..") == 0) {
+        tfs_change_dir_parent();
+      } else {
+        tfs_change_dir(params);
+      }
       print_error();
       continue;
     }

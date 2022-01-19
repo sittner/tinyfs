@@ -25,7 +25,7 @@ static const char *travel_path(const char *path) {
   pos = 0;
   if (path[pos] == '/') {
     pos++;
-    tfs_change_dir("/");
+    tfs_change_dir_root();
     if (last_error != TFS_ERR_OK) {
       return NULL;
     }

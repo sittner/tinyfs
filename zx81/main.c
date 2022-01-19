@@ -53,11 +53,11 @@ void init(void) {
 *** save extension
 ***
 *** syntax:
-*** SAVE ":[FILENAME]"      - save file FILENAME
+*** SAVE ":$"               - format disk
 *** SAVE ":>[DIRNAME]"      - create dir DIRNAME
 *** SAVE ":=[OLD]:[NEW]"    - rename file [OLD] to [NEW]
 *** SAVE ":-[FILENAME]"     - delete file [FILENAME]
-*** SAVE ":$"               - format disk
+*** SAVE ":[FILENAME]"      - save file FILENAME
 ***
 **********************************************************/
 void save(uint8_t *name) {
@@ -99,7 +99,7 @@ void save(uint8_t *name) {
     // forbid load prefixes
     case '?':
     case '*':
-    case ':':
+    case '/':
     case '<':
       last_error = TFS_ERR_NAME_INVAL;
       return;
@@ -115,13 +115,13 @@ void save(uint8_t *name) {
 *** load extension
 ***
 *** syntax:
-*** LOAD ":[FILENAME]" - load file FILENAME
+*** LOAD ":"           - show current dir
 *** LOAD ":?"          - show drive info
 *** LOAD ":*"          - show drive info with used blocks
-*** LOAD ":"           - show current dir
-*** LOAD "::"          - change to root dir
+*** LOAD ":/"          - change to root dir
 *** LOAD ":<"          - change to parent dir
 *** LOAD ":>[DIRNAME]" - change to DIRNAME
+*** LOAD ":[FILENAME]" - load file FILENAME
 ***
 **********************************************************/
 void load(uint8_t *name) {
@@ -151,12 +151,12 @@ void load(uint8_t *name) {
       show_drive_info(1);
       return;
 
-    case ':':
-      tfs_change_dir("/");
+    case '/':
+      tfs_change_dir_root();
       return;
 
     case '<':
-      tfs_change_dir("..");
+      tfs_change_dir_parent();
       return;
 
     case '>':

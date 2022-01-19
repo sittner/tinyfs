@@ -99,6 +99,8 @@ uint8_t tfs_read_dir(void);
 uint8_t tfs_dir_handler(const TFS_DIR_ITEM *item);
 #endif
 
+void tfs_change_dir_root(void);
+void tfs_change_dir_parent(void);
 void tfs_change_dir(const char *name);
 void tfs_create_dir(const char *name);
 
