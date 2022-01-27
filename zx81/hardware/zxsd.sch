@@ -1456,8 +1456,6 @@ Wire Wire Line
 	7700 5900 7700 6000
 Wire Wire Line
 	7700 6000 7800 6000
-Wire Wire Line
-	10650 5650 10750 5650
 Text Label 10850 5650 0    50   ~ 0
 nWR
 Text Label 10850 5550 0    50   ~ 0
@@ -1704,43 +1702,12 @@ F 3 "~" H 6800 5350 50  0001 C CNN
 	1    6800 5150
 	1    0    0    -1  
 $EndComp
-Text Label 6600 5150 2    50   ~ 0
+Text Label 6550 5150 2    50   ~ 0
 nRESET
-Text Label 7050 4350 0    50   ~ 0
+Text Label 7100 4350 0    50   ~ 0
 nRAMCS_INT
-Text Label 7050 4700 0    50   ~ 0
+Text Label 7100 4700 0    50   ~ 0
 nROMCS_INT
-$Comp
-L Device:R R5
-U 1 1 61CECED3
-P 10750 5900
-F 0 "R5" H 10820 5946 50  0000 L CNN
-F 1 "10k" H 10820 5855 50  0000 L CNN
-F 2 "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" V 10680 5900 50  0001 C CNN
-F 3 "~" H 10750 5900 50  0001 C CNN
-	1    10750 5900
-	1    0    0    -1  
-$EndComp
-$Comp
-L power:+5V #PWR035
-U 1 1 61CED6CE
-P 10750 6100
-F 0 "#PWR035" H 10750 5950 50  0001 C CNN
-F 1 "+5V" H 10765 6273 50  0000 C CNN
-F 2 "" H 10750 6100 50  0001 C CNN
-F 3 "" H 10750 6100 50  0001 C CNN
-	1    10750 6100
-	-1   0    0    1   
-$EndComp
-Wire Wire Line
-	10750 5750 10750 5650
-Connection ~ 10750 5650
-Wire Wire Line
-	10750 5650 10850 5650
-Wire Wire Line
-	10750 6050 10750 6100
-Text Notes 10800 6100 0    50   ~ 0
-for HRG
 Wire Wire Line
 	7150 5500 7350 5500
 Connection ~ 7350 5500
@@ -1864,22 +1831,22 @@ $EndComp
 Wire Wire Line
 	6550 4700 6650 4700
 Wire Wire Line
-	6950 4700 7050 4700
+	6950 4700 7100 4700
 $Comp
-L Jumper:SolderJumper_2_Bridged JP4
+L Jumper:Jumper_2_Bridged JP4
 U 1 1 61FC955F
 P 6800 4350
 F 0 "JP4" H 6800 4555 50  0000 C CNN
 F 1 "DIS_INT_RAM" H 6800 4464 50  0000 C CNN
-F 2 "Jumper:SolderJumper-2_P1.3mm_Bridged_RoundedPad1.0x1.5mm" H 6800 4350 50  0001 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 6800 4350 50  0001 C CNN
 F 3 "~" H 6800 4350 50  0001 C CNN
 	1    6800 4350
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	6550 4350 6650 4350
+	6550 4350 6600 4350
 Wire Wire Line
-	6950 4350 7050 4350
+	7000 4350 7100 4350
 $Comp
 L power:GND #PWR0115
 U 1 1 621A0BC3
@@ -2149,4 +2116,37 @@ NoConn ~ 4600 3400
 Connection ~ 2450 1600
 Wire Wire Line
 	2450 1400 2450 1600
+Wire Wire Line
+	10750 5650 10850 5650
+Wire Wire Line
+	10650 5650 10750 5650
+Connection ~ 10750 5650
+Wire Wire Line
+	10750 5750 10750 5650
+$Comp
+L Device:R R5
+U 1 1 61CECED3
+P 10750 5900
+F 0 "R5" H 10820 5946 50  0000 L CNN
+F 1 "10k" H 10820 5855 50  0000 L CNN
+F 2 "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" V 10680 5900 50  0001 C CNN
+F 3 "~" H 10750 5900 50  0001 C CNN
+	1    10750 5900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	10750 6050 10750 6100
+$Comp
+L power:+5V #PWR035
+U 1 1 61CED6CE
+P 10750 6100
+F 0 "#PWR035" H 10750 5950 50  0001 C CNN
+F 1 "+5V" H 10765 6273 50  0000 C CNN
+F 2 "" H 10750 6100 50  0001 C CNN
+F 3 "" H 10750 6100 50  0001 C CNN
+	1    10750 6100
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	6550 5150 6600 5150
 $EndSCHEMATC
