@@ -4,7 +4,7 @@ This is a file system for tiny systems. The initial reason to create this projec
 was the attempt to build a file system that can run on a ZX81 without any
 additional processors (e.g. an ATMEGA for FAT32 support).
 
-![ZXSD PCB](zx81/hardware/zxsd.png)
+![ZXSD PCB](https://github.com/sittner/tinyfs/raw/main/zx81/hardware/zxsd.png)
 
 In fact, this was a little bit challenging, because I wanted to use 32k RAM and
 32k ROM and due to the architecture of the ZX video system only the lower 16k of
@@ -41,7 +41,7 @@ an SD card interface. It was important to me to only use hardware (apart from
 the SD card itself) that would also have been available in the era of the ZX81.
 That's why I deliberately did not use FPGA, CPLD or coprocessors.
 
-[See the ZXSD schematic](zx81/hardware/zxsd.pdf).
+[See the ZXSD schematic](https://github.com/sittner/tinyfs/raw/main/zx81/hardware/zxsd.pdf).
 
 ## Ports
 
