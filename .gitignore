@@ -15,3 +15,4 @@
 *.kicad_pcb-bak
 *.sch-bak
 fp-info-cache
+/zx81/hardware/zxsd-backups/
