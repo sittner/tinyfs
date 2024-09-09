@@ -41,7 +41,7 @@ an SD card interface. It was important to me to only use hardware (apart from
 the SD card itself) that would also have been available in the era of the ZX81.
 That's why I deliberately did not use FPGA, CPLD or coprocessors.
 
-[See the ZXSD schematic.](zx81/hardware/zxsd.pdf).
+[See the ZXSD schematic](zx81/hardware/zxsd.pdf).
 
 ## Ports
 
