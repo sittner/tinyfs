@@ -118,8 +118,8 @@ bitmap block for a given data/directory block can be calculated by logical
 shift/and operations.
 
 The last used bitmap block with free block available is cached in memory to
-speed up allocation for data/directory block. The bitmap block is needed to read
-only once and every following allocation of further block just require an write
+speed up allocation for data/directory blocks. The bitmap block is needed to read
+only once and every following allocation of further blocks just require an write
 operation to keep the mapping data on disk up to date. 
 
 ### Directory blocks
