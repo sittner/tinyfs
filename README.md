@@ -1,4 +1,4 @@
-# tinyfs
+# TinyFS
 
 This is a file system for tiny systems. The initial reason to create this project
 was the attempt to build a file system that can run on a ZX81 without any
@@ -42,6 +42,29 @@ the SD card itself) that would also have been available in the era of the ZX81.
 That's why I deliberately did not use FPGA, CPLD or coprocessors.
 
 [See the ZXSD schematic](https://github.com/sittner/tinyfs/raw/main/zx81/hardware/zxsd.pdf).
+
+The board contains a memory expansion, because we need some RAM for variables
+and buffers and obviously ROM to store the file system code.
+
+The Memory map looks as this:
+
+| Address area    | Mapped device    | Usage                                                          |
+|-----------------|------------------|----------------------------------------------------------------|
+| 0x0000 - 0x3FFF | ROM (lower 16kB) | 0x0000 - 0x1FFF: Original ROM code (patched with TinyFS hooks) |
+|                 |                  | 0x2000 - 0x3FFF: TinyFS code                                   |
+| 0x4000 - 0x7FFF | RAM (lower 16kB) | Normal ZX81 RAM (available to the user)                        |
+| 0x8000 - 0xBFFF | ROM (upper 16kB) | Constant data for TinyFS                                       |
+| 0xC000 - 0xFFFF | RAM (upper 16kB) | 0xC000 - 0xF7FF: Unused (could be used as DFILE e.g. for HRG)  |
+|                 |                  | 0xF800 - 0xFFFF: TinyFS variables and buffers                  |
+
+Unfortunately, I've found no easy way to allow RAM in the 0x2000 - 0x3FFF area,
+which means that the board will not work with WRX16. The NOP logic of the ZX81
+requires that the TinyFS code resides in the lower 32kB area to be executable,
+and I've preferred to provide 16kB of RAM.
+
+Other hires systems like WRX1K, Kevin Baker's HIRES16K or HRG-ms seems to work.
+
+Many thanks to Siggi who helped me much in streamlining the memory encoder stuff.
 
 ## Ports
 
