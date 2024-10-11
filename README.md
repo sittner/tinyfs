@@ -11,7 +11,7 @@ In fact, this was a little bit challenging, because I wanted to use 32k RAM and
 ROM is useable for executable code. 8k of that is already used by the original
 OS, so the code for the FS has to fit into the remaining 8k block. Fortunately
 the upper 16k is useable to store constant data, so all stuff like that
-(i.e. Strings and initializer data) is stored in that area.
+(i.e. strings and initializer data) is stored in that area.
 
 ## File system features
 
@@ -109,7 +109,7 @@ To mount the SD card, you could use:
 
 Don't forget to umount after work is done:
 
-    sudo unount /mnt
+    sudo umount /mnt
 
 ### AVR
 
