@@ -115,8 +115,9 @@ save_patch:
 	; called in FAST mode, so this switch is not necessary
 	;call _ROM_FAST
 
-	; push DE on stack -> filename for save function
-	push de
+	; __sdcccall(1): set 'hl' -> filename for save function
+	ld h,d
+	ld l,e
 	call _save
 
 	call _show_error
@@ -152,8 +153,9 @@ load_patch:
 	; called in FAST mode, so this switch is not necessary
 	;call _ROM_FAST
 
-	; push DE on stack -> filename for load function
-	push de
+	; __sdcccall(1): set 'hl' -> filename for load function
+	ld h,d
+	ld l,e
 	call _load
 
 	call _show_error
