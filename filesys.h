@@ -65,8 +65,8 @@ extern TFS_DRIVE_INFO drive_info;
 extern uint8_t last_error;
 
 // drive low level interface
-void drive_select();
-void drive_deselect();
+void drive_select(void);
+void drive_deselect(void);
 void drive_read_block(uint32_t blkno, uint8_t *data);
 void drive_write_block(uint32_t blkno, const uint8_t *data);
 

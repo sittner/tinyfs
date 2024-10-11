@@ -7,8 +7,8 @@
 
 #define MAX_FILESIZE 16384
 
-static volatile uint8_t   __at 16393 VERSN;
-static volatile uint8_t * __at 16404 E_LINE;
+static volatile uint8_t   __at (16393) VERSN;
+static volatile uint8_t * __at (16404) E_LINE;
 
 static const char const *error_msg[] = {
   "no sd card",
@@ -169,7 +169,7 @@ void load(uint8_t *name) {
    }
 }
 
-void show_error() {
+void show_error(void) {
   if (last_error == 0) {
     return;
   }
