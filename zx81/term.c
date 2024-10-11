@@ -8,9 +8,9 @@
 
 #define PRINT_A_RST 0x10
 
-static volatile uint8_t   __at 0x4027 DEBOUNCE;
-static volatile uint8_t * __at 0x400C D_FILE;
-static volatile uint16_t  __at 0x4025 LAST_K;
+static volatile uint8_t   __at (0x4027) DEBOUNCE;
+static volatile uint8_t * __at (0x400C) D_FILE;
+static volatile uint16_t  __at (0x4025) LAST_K;
 
 // table mapping ascii (7-bit) to ZX81 char set
 static const uint8_t ascii2zx[] = {
@@ -44,16 +44,18 @@ static const char zx2ascii[] =
 
 char term_buf[TERM_BUFFER_SIZE];
 
-void term_clrscrn() {
+void term_clrscrn(void) {
 __asm
   call _ROM_CLS
 __endasm;
 }
 
 void term_putc(char c) {
+// __sdcccall(1):
+// arg 'c' (8 bit) -> reg 'a'
 __asm
   ; convert ASCII to ZX81 charset
-  ld c, 4(ix)
+  ld c, a
   res 7, c
   ld b, #0x00
   ld hl, #_ascii2zx
@@ -98,11 +100,13 @@ void term_putul_aligned(uint32_t v, uint8_t size) {
 }
 
 uint16_t term_get_key(void) {
+// __sdcccall(1):
+// return value (16 bit) -> reg 'de'
 __asm
   ld a, #0xff
   ld (_DEBOUNCE), a
   call _ROM_DISPLAY_1
-  ld hl,(_LAST_K)
+  ld de,(_LAST_K)
   ld a, #0xff
   ld (_DEBOUNCE), a
 __endasm;
