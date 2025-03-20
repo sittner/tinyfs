@@ -10,7 +10,7 @@
 static volatile uint8_t   __at (16393) VERSN;
 static volatile uint8_t * __at (16404) E_LINE;
 
-static const char const *error_msg[] = {
+static const char * const error_msg[] = {
   "no sd card",
   "i/o error",
   "disk full",
@@ -22,7 +22,7 @@ static const char const *error_msg[] = {
   "unexpected end of file"
 };
 
-static const char const *drive_types[] = {
+static const char * const drive_types[] = {
   "emulated disk",
   "mmc card",
   "sd card v1",
