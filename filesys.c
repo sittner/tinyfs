@@ -370,7 +370,7 @@ void tfs_init(void) {
   drive_select();
 
   last_bitmap_blk = drive_info.blk_count - 1;
-  last_bitmap_len = (last_bitmap_len & TFS_BITMAP_BLK_MASK) + 1;
+  last_bitmap_len = (last_bitmap_blk & TFS_BITMAP_BLK_MASK) + 1;
   last_bitmap_blk = GET_BITMAK_BLK(last_bitmap_blk);
 
   load_bitmap(TFS_FIRST_BITMAP_BLK);
