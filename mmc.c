@@ -247,7 +247,7 @@ static uint8_t wait_byte(uint8_t val) {
   return 1;
 }
 
-uint8_t send_command(uint8_t command, uint32_t arg) {
+static uint8_t send_command(uint8_t command, uint32_t arg) {
   uint8_t resp;
   uint8_t i;
 
