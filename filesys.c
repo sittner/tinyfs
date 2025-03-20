@@ -694,6 +694,12 @@ void tfs_write_file(const char *name, const uint8_t *data, uint32_t len, uint8_t
     if (last_error != TFS_ERR_OK) {
       goto out;
     }
+
+    // re-read directory block (buffer got overwritten by free_file_blocks)
+    drive_read_block(loaded_dir_blk, blk_buf.raw);
+    if (last_error != TFS_ERR_OK) {
+      goto out;
+    }
   }
 
   if (len == 0) {
