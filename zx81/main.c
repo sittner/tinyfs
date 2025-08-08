@@ -64,7 +64,7 @@ void save(uint8_t *name) {
   char *p;
 
   if (!init_ok) {
-    last_error = TFS_ERR_NO_DEV;
+    tfs_last_error = TFS_ERR_NO_DEV;
     return;
   }
 
@@ -78,7 +78,7 @@ void save(uint8_t *name) {
     case '=':
       p = strchr(&term_buf[2], ':');
       if (p == NULL) {
-        last_error = TFS_ERR_NO_NAME;
+        tfs_last_error = TFS_ERR_NO_NAME;
         return;
       }
 
@@ -101,7 +101,7 @@ void save(uint8_t *name) {
     case '*':
     case '/':
     case '<':
-      last_error = TFS_ERR_NAME_INVAL;
+      tfs_last_error = TFS_ERR_NAME_INVAL;
       return;
 
 
@@ -126,7 +126,7 @@ void save(uint8_t *name) {
 **********************************************************/
 void load(uint8_t *name) {
   if (!init_ok) {
-    last_error = TFS_ERR_NO_DEV;
+    tfs_last_error = TFS_ERR_NO_DEV;
     return;
   }
 
@@ -170,12 +170,12 @@ void load(uint8_t *name) {
 }
 
 void show_error(void) {
-  if (last_error == 0) {
+  if (tfs_last_error == 0) {
     return;
   }
 
   term_clrscrn();
-  term_puts(error_msg[last_error - 1]);
+  term_puts(error_msg[tfs_last_error - 1]);
 }
 
 static void print_dir_header(void) {
@@ -227,16 +227,16 @@ static void show_drive_info(uint8_t show_used) {
   term_clrscrn();
 
   term_puts(" model: ");
-  term_puts(drive_info.model);
+  term_puts(tfs_drive_info.model);
 
   term_puts("\n serno: ");
-  term_puts(drive_info.serno);
+  term_puts(tfs_drive_info.serno);
 
   term_puts("\n  type: ");
-  term_puts(drive_types[drive_info.type]);
+  term_puts(drive_types[tfs_drive_info.type]);
 
   term_puts("\nblocks: ");
-  term_putul(drive_info.blk_count);
+  term_putul(tfs_drive_info.blk_count);
 
   if (show_used) {
     term_puts("\n  used: ");

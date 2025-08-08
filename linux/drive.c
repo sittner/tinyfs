@@ -15,7 +15,7 @@ static int drive_fd;
 int drive_open(const char *dev) {
   struct stat st;
 
-  memset(&drive_info, 0, sizeof(TFS_DRIVE_INFO));
+  memset(&tfs_drive_info, 0, sizeof(TFS_DRIVE_INFO));
 
   drive_fd = open(dev, O_RDWR);
   if (drive_fd < 0) {
@@ -27,9 +27,9 @@ int drive_open(const char *dev) {
   }
 
   if (S_ISREG(st.st_mode)) {
-    strcpy(drive_info.model, "mmc-emu");
-    strcpy(drive_info.serno, "N/A");
-    drive_info.blk_count = st.st_size / TFS_BLOCKSIZE;
+    strcpy(tfs_drive_info.model, "mmc-emu");
+    strcpy(tfs_drive_info.serno, "N/A");
+    tfs_drive_info.blk_count = st.st_size / TFS_BLOCKSIZE;
     return 0;
   }
 
@@ -39,9 +39,9 @@ int drive_open(const char *dev) {
       goto fail1;
     }
 
-    strcpy(drive_info.model, "sd-card");
-    strcpy(drive_info.serno, "N/A");
-    drive_info.blk_count = size / TFS_BLOCKSIZE;
+    strcpy(tfs_drive_info.model, "sd-card");
+    strcpy(tfs_drive_info.serno, "N/A");
+    tfs_drive_info.blk_count = size / TFS_BLOCKSIZE;
     return 0;
   }
 
@@ -56,35 +56,35 @@ int drive_close(void) {
 }
 
 void drive_read_block(uint32_t blkno, uint8_t *data) {
-  if (blkno >= drive_info.blk_count) {
-    last_error = TFS_ERR_IO;
+  if (blkno >= tfs_drive_info.blk_count) {
+    tfs_last_error = TFS_ERR_IO;
     return;
   }
 
   if (lseek(drive_fd, (off_t) blkno * TFS_BLOCKSIZE, SEEK_SET) < 0) {
-    last_error = TFS_ERR_IO;
+    tfs_last_error = TFS_ERR_IO;
     return;
   }
 
   if (read(drive_fd, data, TFS_BLOCKSIZE) < 0) {
-    last_error = TFS_ERR_IO;
+    tfs_last_error = TFS_ERR_IO;
     return;
   }
 }
 
 void drive_write_block(uint32_t blkno, const uint8_t *data) {
-  if (blkno >= drive_info.blk_count) {
-    last_error = TFS_ERR_IO;
+  if (blkno >= tfs_drive_info.blk_count) {
+    tfs_last_error = TFS_ERR_IO;
     return;
   }
 
   if (lseek(drive_fd, (off_t) blkno * TFS_BLOCKSIZE, SEEK_SET) < 0) {
-    last_error = TFS_ERR_IO;
+    tfs_last_error = TFS_ERR_IO;
     return;
   }
 
   if (write(drive_fd, data, TFS_BLOCKSIZE) < 0) {
-    last_error = TFS_ERR_IO;
+    tfs_last_error = TFS_ERR_IO;
     return;
   }
 }

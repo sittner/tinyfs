@@ -175,7 +175,7 @@ exit_to_os:
 	pop de
 	pop bc
 
-	ld a,(_last_error)
+	ld a,(_tfs_last_error)
 	cp #0
 	jr NZ,exit_error
 

@@ -29,18 +29,18 @@ static const ERROR_ITEM errors[] = {
 
 int check_error(const char *pfx) {
   const ERROR_ITEM *err;
-  if (last_error == TFS_ERR_OK) {
+  if (tfs_last_error == TFS_ERR_OK) {
     return 0;
   }
 
   for (err = errors; err->msg != NULL; err++) {
-    if (err->val == last_error) {
+    if (err->val == tfs_last_error) {
       fprintf(stderr, "%s: %s.\n", pfx, err->msg);
       return -(err->error);
     }
   }
 
-  fprintf(stderr, "%s: Unknown error %d.\n", pfx, last_error);
+  fprintf(stderr, "%s: Unknown error %d.\n", pfx, tfs_last_error);
   return -EIO;
 }
 

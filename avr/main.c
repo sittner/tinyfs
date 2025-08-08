@@ -58,9 +58,9 @@ static char *split(char *s) {
 }
 
 static int print_error(void) {
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     uart_puts_p(PSTR("error "));
-    uart_putw_dec(last_error);
+    uart_putw_dec(tfs_last_error);
     uart_putc('.');
     uart_putc('\n');
     return 1;
@@ -138,11 +138,11 @@ int main(void) {
   tfs_init();
 
   uart_puts_p(PSTR("\nblock count: "));
-  uart_putdw_dec(drive_info.blk_count);
+  uart_putdw_dec(tfs_drive_info.blk_count);
   uart_puts_p(PSTR("\nmodel: "));
-  uart_puts(drive_info.model);
+  uart_puts(tfs_drive_info.model);
   uart_puts_p(PSTR("\nserno: "));
-  uart_puts(drive_info.serno);
+  uart_puts(tfs_drive_info.serno);
   uart_putc('\n');
 
   while(1) {
@@ -226,7 +226,7 @@ int main(void) {
       uart_puts_p(PSTR("blocks used: "));
       uart_putdw_dec(used);
       uart_putc('/');
-      uart_putdw_dec(drive_info.blk_count);
+      uart_putdw_dec(tfs_drive_info.blk_count);
       uart_putc('\n');
       continue;
     }
