@@ -13,46 +13,50 @@
 static int drive_fd;
 
 int drive_open(const char *dev) {
+  drive_fd = open(dev, O_RDWR);
+  if (drive_fd < 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+int drive_close(void) {
+  return close(drive_fd);
+}
+void drive_init(void) {
   struct stat st;
 
   memset(&tfs_drive_info, 0, sizeof(TFS_DRIVE_INFO));
 
-  drive_fd = open(dev, O_RDWR);
-  if (drive_fd < 0) {
-    goto fail0;
-  }
-
   if (fstat(drive_fd, &st) < 0) {
-    goto fail1;
+    tfs_last_error = TFS_ERR_NO_DEV;
+    return;
   }
 
   if (S_ISREG(st.st_mode)) {
     strcpy(tfs_drive_info.model, "mmc-emu");
     strcpy(tfs_drive_info.serno, "N/A");
     tfs_drive_info.blk_count = st.st_size / TFS_BLOCKSIZE;
-    return 0;
+    tfs_last_error = TFS_ERR_OK;
+    return;
   }
 
   if (S_ISBLK(st.st_mode)) {
     uint64_t size;
     if (ioctl(drive_fd, BLKGETSIZE64, &size) < 0) {
-      goto fail1;
+      tfs_last_error = TFS_ERR_NO_DEV;
+      return;
     }
 
     strcpy(tfs_drive_info.model, "sd-card");
     strcpy(tfs_drive_info.serno, "N/A");
     tfs_drive_info.blk_count = size / TFS_BLOCKSIZE;
-    return 0;
+    tfs_last_error = TFS_ERR_OK;
+    return;
   }
 
-fail1:
-  close(drive_fd);
-fail0:
-  return -1;
-}
-
-int drive_close(void) {
-  return close(drive_fd);
+  tfs_last_error = TFS_ERR_NO_DEV;
 }
 
 void drive_read_block(uint32_t blkno, uint8_t *data) {

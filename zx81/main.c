@@ -30,7 +30,6 @@ static const char * const drive_types[] = {
   "sdhc card"
 };
 
-static uint8_t init_ok;
 static uint8_t dir_line;
 static uint16_t dir_files;
 static uint16_t dir_dirs;
@@ -41,11 +40,6 @@ static void show_drive_info(uint8_t show_used);
 
 void init(void) {
   spi_deselect_drive();
-  init_ok = drive_init();
-  if (!init_ok) {
-    return;
-  }
-
   tfs_init();
 }
 
@@ -62,11 +56,6 @@ void init(void) {
 **********************************************************/
 void save(uint8_t *name) {
   char *p;
-
-  if (!init_ok) {
-    tfs_last_error = TFS_ERR_NO_DEV;
-    return;
-  }
 
   term_zx2ascii(name);
 
@@ -125,11 +114,6 @@ void save(uint8_t *name) {
 ***
 **********************************************************/
 void load(uint8_t *name) {
-  if (!init_ok) {
-    tfs_last_error = TFS_ERR_NO_DEV;
-    return;
-  }
-
   term_zx2ascii(name);
 
   switch (term_buf[1]) {

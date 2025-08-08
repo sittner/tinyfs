@@ -367,6 +367,11 @@ void tfs_init(void) {
 #endif
 
   tfs_last_error = TFS_ERR_OK;
+  drive_init();
+  if (tfs_last_error != TFS_ERR_OK) {
+    return;
+  }
+
   drive_select();
 
   last_bitmap_blk = tfs_drive_info.blk_count - 1;
@@ -392,6 +397,9 @@ void tfs_format(void) {
 #ifdef TFS_FORMAT_STATE_CALLBACK
   uint32_t prog_max = last_bitmap_blk >> TFS_BITMAP_BLK_SHIFT;
 #endif
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
 
   tfs_last_error = TFS_ERR_OK;
 #ifdef TFS_FORMAT_STATE_CALLBACK
@@ -487,6 +495,10 @@ uint32_t tfs_get_used(void) {
   uint8_t *p;
   uint8_t mask;
 
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return 0;
+  }
+
   tfs_last_error = TFS_ERR_OK;
   drive_select();
 
@@ -534,6 +546,10 @@ uint8_t tfs_read_dir(void) {
   uint8_t done = 0;
   TFS_DIR_ITEM *p;
 
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return 0;
+  }
+
   tfs_last_error = TFS_ERR_OK;
   drive_select();
 
@@ -572,6 +588,10 @@ void tfs_change_dir_root(void) {
 }
 
 void tfs_change_dir_parent(void) {
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
+
   tfs_last_error = TFS_ERR_OK;
   drive_select();
 
@@ -593,6 +613,10 @@ out:
 
 void tfs_change_dir(const char *name) {
   TFS_DIR_ITEM *item;
+
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
 
   tfs_last_error = TFS_ERR_OK;
   drive_select();
@@ -618,6 +642,10 @@ out:
 void tfs_create_dir(const char *name) {
   TFS_DIR_ITEM *item;
   uint32_t new;
+
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
 
   tfs_last_error = TFS_ERR_OK;
   drive_select();
@@ -664,6 +692,10 @@ void tfs_write_file(const char *name, const uint8_t *data, uint32_t len, uint8_t
   TFS_DIR_ITEM *item;
   uint32_t pos;
   uint16_t blk_len;
+
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
 
   tfs_last_error = TFS_ERR_OK;
   drive_select();
@@ -764,6 +796,10 @@ uint32_t tfs_read_file(const char *name, uint8_t *data, uint32_t max_len) {
   uint32_t rem;
   uint16_t blk_len;
 
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return 0;
+  }
+
   tfs_last_error = TFS_ERR_OK;
   drive_select();
 
@@ -832,6 +868,10 @@ void tfs_delete(const char *name) {
   uint32_t pos;
   uint8_t i;
   TFS_DIR_ITEM *p;
+
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
 
   tfs_last_error = TFS_ERR_OK;
   drive_select();
@@ -924,6 +964,10 @@ out:
 
 void tfs_rename(const char *from, const char *to) {
   TFS_DIR_ITEM *item;
+
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
 
   tfs_last_error = TFS_ERR_OK;
   drive_select();
@@ -1092,6 +1136,10 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append) {
 TFS_DIR_ITEM *tfs_stat(const char *name) {
   TFS_DIR_ITEM *item;
 
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return NULL;
+  }
+
   tfs_last_error = TFS_ERR_OK;
   drive_select();
 
@@ -1103,6 +1151,10 @@ TFS_DIR_ITEM *tfs_stat(const char *name) {
 
 void tfs_touch(const char *name) {
   TFS_DIR_ITEM *item;
+
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
 
   tfs_last_error = TFS_ERR_OK;
   drive_select();
@@ -1136,6 +1188,10 @@ int8_t tfs_open(const char *name) {
   TFS_FILEHANDLE *hnd;
   TFS_DIR_ITEM *item;
   int8_t fd = -1;
+
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return -1;
+  }
 
   tfs_last_error = TFS_ERR_OK;
   drive_select();
@@ -1185,6 +1241,10 @@ out:
 void tfs_close(int8_t fd) {
   TFS_FILEHANDLE *hnd;
 
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
+
   tfs_last_error = TFS_ERR_OK;
 
   // check fd range
@@ -1208,6 +1268,10 @@ void tfs_trunc(int8_t fd, uint32_t size) {
   TFS_FILEHANDLE *hnd;
   uint8_t seek_res;
   uint32_t free_from = 0;
+
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
 
   tfs_last_error = TFS_ERR_OK;
   drive_select();
@@ -1275,6 +1339,10 @@ uint32_t tfs_write(int8_t fd, const uint8_t *data, uint32_t len, uint32_t offset
   uint8_t append = 0;
   uint8_t update_item = 0;
   uint32_t ret = 0;
+
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return 0;
+  }
 
   tfs_last_error = TFS_ERR_OK;
   drive_select();
@@ -1380,6 +1448,10 @@ uint32_t tfs_read(int8_t fd, uint8_t *data, uint32_t len, uint32_t offset) {
   TFS_FILEHANDLE *hnd;
   uint32_t blk_os, blk_len;
   uint32_t ret = 0;
+
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return 0;
+  }
 
   tfs_last_error = TFS_ERR_OK;
   drive_select();

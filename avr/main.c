@@ -130,12 +130,11 @@ int main(void) {
   // setup_spi
   spi_init();
 
-  if (!drive_init()) {
-    uart_puts_p(PSTR("failed to initialize sd card.\n"));
+  tfs_init();
+  if (print_error()) {
+    uart_puts_p(PSTR("failed to initialize tfs.\n"));
     return 1;
   }
-
-  tfs_init();
 
   uart_puts_p(PSTR("\nblock count: "));
   uart_putdw_dec(tfs_drive_info.blk_count);

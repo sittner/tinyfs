@@ -109,7 +109,7 @@ static uint8_t get_info(void);
 
 static uint8_t tmp_buf[18];
 
-uint8_t drive_init(void) {
+void drive_init(void) {
   uint8_t resp;
   uint16_t i;
 
@@ -207,11 +207,12 @@ uint8_t drive_init(void) {
   // deaddress card
   drive_deselect();
 
-  return 1;
+  tfs_last_error = TFS_ERR_OK;
+  return;
 
 fail:
   drive_deselect();
-  return 0;
+  tfs_last_error = TFS_ERR_NO_DEV;
 }
 
 void drive_select(void) {

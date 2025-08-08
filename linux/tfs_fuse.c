@@ -432,6 +432,11 @@ int main(int argc, char **argv) {
   argc--;
 
   tfs_init();
+  if (tfs_last_error != TFS_ERR_OK) {
+    fprintf(stderr, "Failed initialize tfs.\n");
+    drive_close();
+    return 1;
+  }
 
   my_uid = getuid();
   my_gid = getgid();
