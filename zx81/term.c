@@ -99,16 +99,30 @@ void term_putul_aligned(uint32_t v, uint8_t size) {
   term_puts(p);
 }
 
-uint16_t term_get_key(void) {
+uint16_t term_get_key(void) __naked {
 // __sdcccall(1):
 // return value (16 bit) -> reg 'de'
 __asm
+  push af
+  push bc
+  push hl
+  push ix
+  call _restore_os_regs
+
   ld a, #0xff
   ld (_DEBOUNCE), a
   call _ROM_DISPLAY_1
-  ld de,(_LAST_K)
   ld a, #0xff
   ld (_DEBOUNCE), a
+
+  call _save_os_regs
+  pop ix
+  pop hl
+  pop bc
+  pop af
+
+  ld de,(_LAST_K)
+  ret
 __endasm;
 }
 
