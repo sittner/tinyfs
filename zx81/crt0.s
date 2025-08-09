@@ -36,9 +36,14 @@
 	.globl	_load
 	.globl	_show_error
 
+	.globl	_save_os_regs
+	.globl	_restore_os_regs
+
 	.area	_HEADER (ABS)
 
 	.include "zx81rom-patched.i"
+
+_CDFLAG = 0x403B
 
 	;; Ordering of segments for the linker.
 	.area	_HOME
@@ -56,9 +61,31 @@
 	.area   _HEAP
 
 	.area	_DATA
-_CDFLAG =	0x403B
+
+os_reg_bc:
+	.ds 2
+os_reg_de:
+	.ds 2
+os_reg_hl:
+	.ds 2
+os_reg_ix:
+	.ds 2
 
 	.area   _CODE
+
+_save_os_regs:
+	ld (os_reg_bc), bc
+	ld (os_reg_de), de
+	ld (os_reg_hl), hl
+	ld (os_reg_ix), ix
+	ret
+
+_restore_os_regs:
+	ld bc, (os_reg_bc)
+	ld de, (os_reg_de)
+	ld hl, (os_reg_hl)
+	ld ix, (os_reg_ix)
+	ret
 
 init_patch:
 	; first the remaining initialization ripped from original ROM
@@ -101,10 +128,7 @@ save_patch:
 	cp #14
 	jr NZ,save_tape
 
-	push bc
-	push de
-	push hl
-	push ix
+	call _save_os_regs
 
 	; save CDFLAG
 	ld a,(_CDFLAG)
@@ -115,8 +139,9 @@ save_patch:
 	; called in FAST mode, so this switch is not necessary
 	;call _ROM_FAST
 
-	; push DE on stack -> filename for save function
-	push de
+	; __sdcccall(1): set 'hl' -> filename for save function
+	ld h,d
+	ld l,e
 	call _save
 
 	call _show_error
@@ -138,10 +163,7 @@ load_patch:
 	cp #14
 	jr NZ,load_tape
 
-	push bc
-	push de
-	push hl
-	push ix
+	call _save_os_regs
 
 	; save CDFLAG
 	ld a,(_CDFLAG)
@@ -152,8 +174,9 @@ load_patch:
 	; called in FAST mode, so this switch is not necessary
 	;call _ROM_FAST
 
-	; push DE on stack -> filename for load function
-	push de
+	; __sdcccall(1): set 'hl' -> filename for load function
+	ld h,d
+	ld l,e
 	call _load
 
 	call _show_error
@@ -168,12 +191,9 @@ exit_to_os:
 	pop af
 	ld (_CDFLAG),a
 
-	pop ix
-	pop hl
-	pop de
-	pop bc
+	call _restore_os_regs
 
-	ld a,(_last_error)
+	ld a,(_tfs_last_error)
 	cp #0
 	jr NZ,exit_error
 

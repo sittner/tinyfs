@@ -11,7 +11,7 @@ In fact, this was a little bit challenging, because I wanted to use 32k RAM and
 ROM is useable for executable code. 8k of that is already used by the original
 OS, so the code for the FS has to fit into the remaining 8k block. Fortunately
 the upper 16k is useable to store constant data, so all stuff like that
-(i.e. Strings and initializer data) is stored in that area.
+(i.e. strings and initializer data) is stored in that area.
 
 ## File system features
 
@@ -91,7 +91,7 @@ file name:
 Without prefix, LOAD/SAVE acts as normal tape operation.
 
 To build the hex file for the ROM you will need [SDCC](https://sdcc.sourceforge.net/)
-version [4.1.0](https://sourceforge.net/projects/sdcc/files/sdcc/4.1.0/sdcc-src-4.1.0.tar.bz2/download).
+version [4.5.0](https://sourceforge.net/projects/sdcc/files/sdcc/4.5.0/sdcc-src-4.5.0.tar.bz2/download).
 
 ### Linux
 
@@ -109,7 +109,7 @@ To mount the SD card, you could use:
 
 Don't forget to umount after work is done:
 
-    sudo unount /mnt
+    sudo umount /mnt
 
 ### AVR
 

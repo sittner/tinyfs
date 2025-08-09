@@ -26,14 +26,14 @@ static const char *travel_path(const char *path) {
   if (path[pos] == '/') {
     pos++;
     tfs_change_dir_root();
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return NULL;
     }
   }
 
   rw = strdup(path);
   if (rw == NULL) {
-    last_error = TFS_ERR_IO;
+    tfs_last_error = TFS_ERR_IO;
     return NULL;
   }
 
@@ -42,12 +42,12 @@ static const char *travel_path(const char *path) {
       rw[pos]= 0;
       if (rw[tok] != 0) {
         if (strlen(&rw[tok]) > TFS_NAME_LEN) {
-          last_error = TFS_ERR_NOT_EXIST;
+          tfs_last_error = TFS_ERR_NOT_EXIST;
           free(rw);
           return NULL;
         }
         tfs_change_dir(&rw[tok]);
-        if (last_error != TFS_ERR_OK) {
+        if (tfs_last_error != TFS_ERR_OK) {
           free(rw);
           return NULL;
         }
@@ -244,7 +244,7 @@ static int op_statfs(const char *path, struct statvfs *statv) {
 
   memset(statv, 0, sizeof(struct statvfs));
 
-  blk_free = drive_info.blk_count - tfs_get_used();
+  blk_free = tfs_drive_info.blk_count - tfs_get_used();
   err = check_error("op_statfs:tfs_get_used");
   if (err) {
     return err;
@@ -252,7 +252,7 @@ static int op_statfs(const char *path, struct statvfs *statv) {
 
   statv->f_bsize = TFS_BLOCKSIZE;
   statv->f_frsize = TFS_BLOCKSIZE;
-  statv->f_blocks = drive_info.blk_count;
+  statv->f_blocks = tfs_drive_info.blk_count;
   statv->f_bfree = blk_free;
   statv->f_bavail = blk_free;
   statv->f_namemax = TFS_NAME_LEN;
@@ -432,6 +432,11 @@ int main(int argc, char **argv) {
   argc--;
 
   tfs_init();
+  if (tfs_last_error != TFS_ERR_OK) {
+    fprintf(stderr, "Failed initialize tfs.\n");
+    drive_close();
+    return 1;
+  }
 
   my_uid = getuid();
   my_gid = getgid();

@@ -109,12 +109,12 @@ static uint8_t get_info(void);
 
 static uint8_t tmp_buf[18];
 
-uint8_t drive_init(void) {
+void drive_init(void) {
   uint8_t resp;
   uint16_t i;
 
   // initialization procedure
-  drive_info.type = DRIVE_TYPE_MMC;
+  tfs_drive_info.type = DRIVE_TYPE_MMC;
     
   // card needs 74 cycles minimum to start up
   spi_dummy_transfer(10);
@@ -149,24 +149,24 @@ uint8_t drive_init(void) {
     }
 
     // card conforms to SD 2 card specification
-    drive_info.type = DRIVE_TYPE_SDV2;
+    tfs_drive_info.type = DRIVE_TYPE_SDV2;
   } else {
     // determine SD/MMC card type
     send_command(CMD_APP, 0);
     resp = send_command(CMD_SD_SEND_OP_COND, 0);
     if ((resp & STATE_ILL_COMMAND) == 0) {
       // card conforms to SD 1 card specification
-      drive_info.type = DRIVE_TYPE_SDV1;
+      tfs_drive_info.type = DRIVE_TYPE_SDV1;
     }
   }
 
   // wait for card to get ready
   for (i = 0;; i++) {
-    if (drive_info.type == DRIVE_TYPE_MMC) {
+    if (tfs_drive_info.type == DRIVE_TYPE_MMC) {
       resp = send_command(CMD_SEND_OP_COND, 0);
     } else {
       send_command(CMD_APP, 0);
-      if (drive_info.type == DRIVE_TYPE_SDV2) {
+      if (tfs_drive_info.type == DRIVE_TYPE_SDV2) {
         resp = send_command(CMD_SD_SEND_OP_COND, 0x40000000);
       } else {
         resp = send_command(CMD_SD_SEND_OP_COND, 0);
@@ -183,7 +183,7 @@ uint8_t drive_init(void) {
     }
   }
 
-  if (drive_info.type == DRIVE_TYPE_SDV2) {
+  if (tfs_drive_info.type == DRIVE_TYPE_SDV2) {
     if (send_command(CMD_READ_OCR, 0)) {
       goto fail;
     }
@@ -191,7 +191,7 @@ uint8_t drive_init(void) {
     spi_read_block(tmp_buf, 4);
 
     if (tmp_buf[0] & 0x40) {
-      drive_info.type = DRIVE_TYPE_SDHC;
+      tfs_drive_info.type = DRIVE_TYPE_SDHC;
     }
   }
 
@@ -207,11 +207,12 @@ uint8_t drive_init(void) {
   // deaddress card
   drive_deselect();
 
-  return 1;
+  tfs_last_error = TFS_ERR_OK;
+  return;
 
 fail:
   drive_deselect();
-  return 0;
+  tfs_last_error = TFS_ERR_NO_DEV;
 }
 
 void drive_select(void) {
@@ -247,7 +248,7 @@ static uint8_t wait_byte(uint8_t val) {
   return 1;
 }
 
-uint8_t send_command(uint8_t command, uint32_t arg) {
+static uint8_t send_command(uint8_t command, uint32_t arg) {
   uint8_t resp;
   uint8_t i;
 
@@ -283,19 +284,19 @@ uint8_t send_command(uint8_t command, uint32_t arg) {
 
 void drive_read_block(uint32_t blkno, uint8_t *data) {
   // use byte offset if not SDHC
-  if (drive_info.type != DRIVE_TYPE_SDHC) {
+  if (tfs_drive_info.type != DRIVE_TYPE_SDHC) {
     blkno <<= TFS_BLOCKSIZE_WIDTH;
   }
 
   // send single block request
   if (send_command(CMD_READ_SINGLE_BLOCK, blkno)) {
-    last_error = TFS_ERR_IO;
+    tfs_last_error = TFS_ERR_IO;
     return;
   }
 
   // wait for data block (start byte 0xfe)
   if (!wait_byte(0xfe)) {
-    last_error = TFS_ERR_IO;
+    tfs_last_error = TFS_ERR_IO;
     return;
   }
 
@@ -308,13 +309,13 @@ void drive_read_block(uint32_t blkno, uint8_t *data) {
 
 void drive_write_block(uint32_t blkno, const uint8_t *data) {
   // use byte offset if not SDHC
-  if (drive_info.type != DRIVE_TYPE_SDHC) {
+  if (tfs_drive_info.type != DRIVE_TYPE_SDHC) {
     blkno <<= TFS_BLOCKSIZE_WIDTH;
   }
 
   // send single block request
   if (send_command(CMD_WRITE_SINGLE_BLOCK, blkno)) {
-    last_error = TFS_ERR_IO;
+    tfs_last_error = TFS_ERR_IO;
     return;
   }
 
@@ -333,7 +334,7 @@ void drive_write_block(uint32_t blkno, const uint8_t *data) {
 
   // wait while card is busy
   if (!wait_byte(0xff)) {
-    last_error = TFS_ERR_IO;
+    tfs_last_error = TFS_ERR_IO;
     return;
   }
 }
@@ -346,8 +347,8 @@ static uint8_t get_info(void) {
   uint32_t csd_c_size;
   uint8_t csd_structure;
   uint8_t *p;
-  char *model = drive_info.model;
-  char *serno = drive_info.serno;
+  char *model = tfs_drive_info.model;
+  char *serno = tfs_drive_info.serno;
 
   // read cid register
   if(send_command(CMD_SEND_CID, 0)) {
@@ -415,7 +416,7 @@ static uint8_t get_info(void) {
     csd_c_size |= *(p++);
       csd_c_size++;
     p ++;
-    drive_info.blk_count = csd_c_size * 1024;
+    tfs_drive_info.blk_count = csd_c_size * 1024;
   } else {
     csd_read_bl_len = *(p++) & 0x0f;
     csd_c_size  = (uint32_t) (*(p++) & 0x03) << 10;
@@ -425,7 +426,7 @@ static uint8_t get_info(void) {
     csd_c_size_mult  = (*(p++) & 0x03) << 1;
     csd_c_size_mult |= *(p++) >> 7;
     csd_c_size <<= csd_c_size_mult + csd_read_bl_len + 2;
-    drive_info.blk_count = csd_c_size >> TFS_BLOCKSIZE_WIDTH;
+    tfs_drive_info.blk_count = csd_c_size >> TFS_BLOCKSIZE_WIDTH;
   }
 
   return 1;

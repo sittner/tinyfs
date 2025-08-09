@@ -17,73 +17,71 @@ __endasm;
 }
 
 uint8_t spi_transfer_byte(uint8_t b) {
+// __sdcccall(1):
+// arg 'b' (8 bit) -> reg 'a'
+// return value (8 bit) -> reg 'a'
 __asm
-  ld a, 4(ix)
   out (0xef), a
   nop
   in a, (0xef)
-  ld l, a
 __endasm;
 }
 
 void spi_read_block(uint8_t *data, uint16_t len) {
+// __sdcccall(1):
+// arg '*data' (16 bit) -> reg 'hl'
+// arg 'len' (16 bit) -> reg 'de'
 __asm
-  ld c, 6 (ix)
-  ld b, 7 (ix)
-  ld e, 4 (ix)
-  ld d, 5 (ix)
 00001$:
-  ld a, b
-  or a, c
+  ld a, d
+  or a, e
   jr Z, 00002$
 
   ld a, #0xff
   out (0xef), a
   nop
   in a, (0xef)
-  ld (de), a
+  ld (hl), a
 
-  dec bc
-  inc de
+  dec de
+  inc hl
   jr 00001$
 00002$:
 __endasm;
 }
 
 void spi_write_block(const uint8_t *data, uint16_t len) {
+// arg '*data' (16 bit) -> reg 'hl'
+// arg 'len' (16 bit) -> reg 'de'
 __asm
-  ld c, 6 (ix)
-  ld b, 7 (ix)
-  ld e, 4 (ix)
-  ld d, 5 (ix)
 00001$:
-  ld a, b
-  or a, c
+  ld a, d
+  or a, e
   jr Z, 00002$
 
-  ld a,(de)
+  ld a,(hl)
   out (0xef), a
 
-  dec bc
-  inc de
+  dec de
+  inc hl
   jr 00001$
 00002$:
 __endasm;
 }
 
 void spi_dummy_transfer(uint16_t len) {
+// __sdcccall(1):
+// arg 'len' (16 bit) -> reg 'hl'
 __asm
-  ld c, 4 (ix)
-  ld b, 5 (ix)
 00001$:
-  ld a, b
-  or a, c
+  ld a, h
+  or a, l
   jr Z, 00002$
 
   ld a, #0xff
   out (0xef), a
 
-  dec bc
+  dec hl
   jr 00001$
 00002$:
 __endasm;

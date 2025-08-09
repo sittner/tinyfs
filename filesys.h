@@ -5,6 +5,12 @@
 
 #include "filesys_conf.h"
 
+#ifdef __GNUC__
+  #define _PACKED __attribute__((packed))
+#else
+  #define _PACKED
+#endif
+
 #define DRIVE_INFO_MODEL_LEN 32
 #define DRIVE_INFO_FW_LEN 8
 #define DRIVE_INFO_SERNO_LEN 20
@@ -44,12 +50,6 @@ typedef struct {
 #define TFS_FILE_BUSY       102
 #endif
 
-#ifdef __GNUC__
-  #define _PACKED __attribute__((packed))
-#else
-  #define _PACKED
-#endif
-
 typedef struct {
   uint32_t blk;
   uint32_t size;
@@ -61,12 +61,13 @@ typedef struct {
 #define TFS_DIR_ITEM_DIR  1
 #define TFS_DIR_ITEM_FILE 2
 
-extern TFS_DRIVE_INFO drive_info;
-extern uint8_t last_error;
+extern TFS_DRIVE_INFO tfs_drive_info;
+extern uint8_t tfs_last_error;
 
 // drive low level interface
-void drive_select();
-void drive_deselect();
+void drive_init(void);
+void drive_select(void);
+void drive_deselect(void);
 void drive_read_block(uint32_t blkno, uint8_t *data);
 void drive_write_block(uint32_t blkno, const uint8_t *data);
 

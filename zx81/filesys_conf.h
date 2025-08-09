@@ -7,5 +7,9 @@
 #define TFS_FILENAME_CMP(ref, cmp) filename_cmp(ref, cmp)
 uint8_t filename_cmp(const char *ref, const char *cmp);
 
+#define spi_send_byte(b) spi_transfer_byte(b)
+#define spi_rec_byte() spi_transfer_byte(0xff)
+uint8_t spi_transfer_byte(uint8_t b);
+
 #endif
 

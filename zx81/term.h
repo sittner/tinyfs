@@ -47,7 +47,7 @@
 
 extern char term_buf[];
 
-void term_clrscrn();
+void term_clrscrn(void);
 
 void term_putc(char c);
 void term_puts(const char *s);

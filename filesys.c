@@ -29,8 +29,8 @@ typedef union {
   TFS_DATA_BLK data;
 } TFS_BLK_BUFFER;
 
-TFS_DRIVE_INFO drive_info;
-uint8_t last_error;
+TFS_DRIVE_INFO tfs_drive_info;
+uint8_t tfs_last_error;
 
 #ifdef TFS_EXTENDED_API
 
@@ -88,7 +88,7 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item);
 
 static void load_bitmap(uint32_t pos) {
   drive_read_block(pos, bitmap_blk);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     loaded_bitmap_blk = TFS_BITMAP_BLK_INVAL;
     return;
   }
@@ -105,7 +105,7 @@ static uint32_t alloc_block(void) {
 
   // no current bitmap block -> full was detected
   if (loaded_bitmap_blk == TFS_BITMAP_BLK_INVAL) {
-    last_error = TFS_ERR_DISK_FULL;
+    tfs_last_error = TFS_ERR_DISK_FULL;
     return 0;
   }
 
@@ -122,7 +122,7 @@ static uint32_t alloc_block(void) {
 
             // write updated bitmap block
             drive_write_block(loaded_bitmap_blk, bitmap_blk);
-            if (last_error != TFS_ERR_OK) {
+            if (tfs_last_error != TFS_ERR_OK) {
               return 0;
             }
 
@@ -143,13 +143,13 @@ static uint32_t alloc_block(void) {
     // disk is full if we're back to where we have started
     if (pos == start) {
       loaded_bitmap_blk = TFS_BITMAP_BLK_INVAL;
-      last_error = TFS_ERR_DISK_FULL;
+      tfs_last_error = TFS_ERR_DISK_FULL;
       return 0;
     }
 
     // read next block
     load_bitmap(pos);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return 0;
     }
   }
@@ -164,7 +164,7 @@ static void free_block(uint32_t pos) {
   tmp = GET_BITMAK_BLK(pos);
   if (loaded_bitmap_blk != tmp) {
     load_bitmap(tmp);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return;
     }
   }
@@ -177,7 +177,7 @@ static void free_block(uint32_t pos) {
 
   // write block
   drive_write_block(loaded_bitmap_blk, bitmap_blk);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     return;
   }
 }
@@ -185,11 +185,11 @@ static void free_block(uint32_t pos) {
 static void free_file_blocks(uint32_t pos) {
   while (pos != 0) {
     drive_read_block(pos, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return;
     }
     free_block(pos);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return;
     }
     pos = blk_buf.data.next;
@@ -223,7 +223,7 @@ static void write_dir_cleanup(void) {
   if (prev == 0) {
     // we are on list head, so move the next block to this position
     drive_read_block(next, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return;
     }
 
@@ -236,7 +236,7 @@ static void write_dir_cleanup(void) {
   } else {
     // update prev
     drive_read_block(prev, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return;
     }
 
@@ -245,21 +245,21 @@ static void write_dir_cleanup(void) {
 
   // write updated block
   drive_write_block(prev, blk_buf.raw);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     return;
   }
 
   if (next != 0) {
     // update next
     drive_read_block(next, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return;
     }
 
     blk_buf.dir.prev = prev;
 
     drive_write_block(next, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return;
     }
   }
@@ -277,14 +277,14 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
 
   // check for name
   if (*name == 0) {
-    last_error = TFS_ERR_NO_NAME;
+    tfs_last_error = TFS_ERR_NO_NAME;
     return NULL;
   }
 
   while (1) {
     // read current directory block
     drive_read_block(pos, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return NULL;
     }
     loaded_dir_blk = pos;
@@ -322,7 +322,7 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
     // reload directory block, if an other than the one with the free item is loaded
     if (loaded_dir_blk != free_blk) {
       drive_read_block(free_blk, blk_buf.raw);
-      if (last_error != TFS_ERR_OK) {
+      if (tfs_last_error != TFS_ERR_OK) {
         return NULL;
       }
       loaded_dir_blk = free_blk;
@@ -333,14 +333,14 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
 
   // now we need a new directory block, so alloc one
   free_blk = alloc_block();
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     return NULL;
   }
 
   // add pointer to new block to last one
   blk_buf.dir.next = free_blk;
   drive_write_block(loaded_dir_blk, blk_buf.raw);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     return NULL;
   }
 
@@ -353,7 +353,7 @@ static TFS_DIR_ITEM *find_file(const char *name, uint8_t want_free_item) {
 
   // write block
   drive_write_block(free_blk, blk_buf.raw);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     return NULL;
   }
 
@@ -366,15 +366,20 @@ void tfs_init(void) {
   memset(handles, 0, sizeof(handles));
 #endif
 
-  last_error = TFS_ERR_OK;
+  tfs_last_error = TFS_ERR_OK;
+  drive_init();
+  if (tfs_last_error != TFS_ERR_OK) {
+    return;
+  }
+
   drive_select();
 
-  last_bitmap_blk = drive_info.blk_count - 1;
-  last_bitmap_len = (last_bitmap_len & TFS_BITMAP_BLK_MASK) + 1;
+  last_bitmap_blk = tfs_drive_info.blk_count - 1;
+  last_bitmap_len = (last_bitmap_blk & TFS_BITMAP_BLK_MASK) + 1;
   last_bitmap_blk = GET_BITMAK_BLK(last_bitmap_blk);
 
   load_bitmap(TFS_FIRST_BITMAP_BLK);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
@@ -392,8 +397,11 @@ void tfs_format(void) {
 #ifdef TFS_FORMAT_STATE_CALLBACK
   uint32_t prog_max = last_bitmap_blk >> TFS_BITMAP_BLK_SHIFT;
 #endif
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
 
-  last_error = TFS_ERR_OK;
+  tfs_last_error = TFS_ERR_OK;
 #ifdef TFS_FORMAT_STATE_CALLBACK
   tfs_format_state(TFS_FORMAT_STATE_START);
 #endif
@@ -428,7 +436,7 @@ void tfs_format(void) {
 
     // write block
     drive_write_block(pos, bitmap_blk);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
 
@@ -446,7 +454,7 @@ void tfs_format(void) {
 
   // read the first bitmap-block
   load_bitmap(TFS_FIRST_BITMAP_BLK);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
@@ -456,7 +464,7 @@ void tfs_format(void) {
 
   // alloc root dir block (should be block 3)
   pos = alloc_block();
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
@@ -465,7 +473,7 @@ void tfs_format(void) {
 
   // write block
   drive_write_block(pos, blk_buf.raw);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
@@ -487,7 +495,11 @@ uint32_t tfs_get_used(void) {
   uint8_t *p;
   uint8_t mask;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return 0;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   pos = TFS_FIRST_BITMAP_BLK;
@@ -495,7 +507,7 @@ uint32_t tfs_get_used(void) {
   while (1) {
     // load bitmap block
     load_bitmap(pos);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       drive_deselect();
       return 0;
     }
@@ -534,13 +546,17 @@ uint8_t tfs_read_dir(void) {
   uint8_t done = 0;
   TFS_DIR_ITEM *p;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return 0;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   while (1) {
     // read current directory block
     drive_read_block(pos, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
 
@@ -572,16 +588,20 @@ void tfs_change_dir_root(void) {
 }
 
 void tfs_change_dir_parent(void) {
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   drive_read_block(current_dir_blk, blk_buf.raw);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
   if (blk_buf.dir.parent == 0) {
-    last_error = TFS_ERR_NOT_EXIST;
+    tfs_last_error = TFS_ERR_NOT_EXIST;
     goto out;
   }
 
@@ -594,18 +614,22 @@ out:
 void tfs_change_dir(const char *name) {
   TFS_DIR_ITEM *item;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   // search for dir name
   item = find_file(name, 0);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
   // directory not found?
   if (item == NULL || item->type != TFS_DIR_ITEM_DIR) {
-    last_error = TFS_ERR_NOT_EXIST;
+    tfs_last_error = TFS_ERR_NOT_EXIST;
     goto out;
   }
 
@@ -619,24 +643,28 @@ void tfs_create_dir(const char *name) {
   TFS_DIR_ITEM *item;
   uint32_t new;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   // check for name
   item = find_file(name, 1);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
   // directory already exists?
   if (item->type != TFS_DIR_ITEM_FREE) {
-    last_error = TFS_ERR_FILE_EXIST;
+    tfs_last_error = TFS_ERR_FILE_EXIST;
     goto out;
   }
 
   // alloc new dir block
   new = alloc_block();
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
@@ -646,7 +674,7 @@ void tfs_create_dir(const char *name) {
   item->size = 0;
   strncpy(item->name, name, TFS_NAME_LEN);
   drive_write_block(loaded_dir_blk, blk_buf.raw);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
@@ -665,33 +693,43 @@ void tfs_write_file(const char *name, const uint8_t *data, uint32_t len, uint8_t
   uint32_t pos;
   uint16_t blk_len;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   // check for name
   item = find_file(name, 1);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
   // file already exists?
   if (item->type != TFS_DIR_ITEM_FREE) {
     if (!overwrite || item->type != TFS_DIR_ITEM_FILE) {
-      last_error = TFS_ERR_FILE_EXIST;
+      tfs_last_error = TFS_ERR_FILE_EXIST;
       goto out;
     }
 
 #ifdef TFS_EXTENDED_API
     // check if file is in use
     if (item_usage_count(item) > 0) {
-      last_error = TFS_FILE_BUSY;
+      tfs_last_error = TFS_FILE_BUSY;
       goto out;
     }
 #endif
 
     // free old data blocks
     free_file_blocks(item->blk);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
+      goto out;
+    }
+
+    // re-read directory block (buffer got overwritten by free_file_blocks)
+    drive_read_block(loaded_dir_blk, blk_buf.raw);
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
   }
@@ -702,7 +740,7 @@ void tfs_write_file(const char *name, const uint8_t *data, uint32_t len, uint8_t
   } else {
     // allocate first data block
     pos = alloc_block();
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
   }
@@ -713,7 +751,7 @@ void tfs_write_file(const char *name, const uint8_t *data, uint32_t len, uint8_t
   item->size = len;
   strncpy(item->name, name, TFS_NAME_LEN);
   drive_write_block(loaded_dir_blk, blk_buf.raw);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
@@ -740,7 +778,7 @@ void tfs_write_file(const char *name, const uint8_t *data, uint32_t len, uint8_t
 
     // write block
     drive_write_block(pos, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
 
@@ -758,18 +796,22 @@ uint32_t tfs_read_file(const char *name, uint8_t *data, uint32_t max_len) {
   uint32_t rem;
   uint16_t blk_len;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return 0;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   // search for file
   item = find_file(name, 0);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
   // file not found?
   if (item == NULL || item->type != TFS_DIR_ITEM_FILE) {
-    last_error = TFS_ERR_NOT_EXIST;
+    tfs_last_error = TFS_ERR_NOT_EXIST;
     goto out;
   }
 
@@ -784,7 +826,7 @@ uint32_t tfs_read_file(const char *name, uint8_t *data, uint32_t max_len) {
   while (1) {
     // read next data block
     drive_read_block(pos, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
 
@@ -805,7 +847,7 @@ uint32_t tfs_read_file(const char *name, uint8_t *data, uint32_t max_len) {
     pos = blk_buf.data.next;
     if (pos == 0) {
       if (rem > 0) {
-        last_error = TFS_ERR_UNEXP_EOF;
+        tfs_last_error = TFS_ERR_UNEXP_EOF;
         goto out;
       }
 
@@ -827,31 +869,35 @@ void tfs_delete(const char *name) {
   uint8_t i;
   TFS_DIR_ITEM *p;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   // search for name
   item = find_file(name, 0);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
   // not found?
   if (item == NULL) {
-    last_error = TFS_ERR_NOT_EXIST;
+    tfs_last_error = TFS_ERR_NOT_EXIST;
     goto out;
   }
 
 #ifdef TFS_EXTENDED_API
   // check file type
   if (type != 0 && item->type != type) {
-    last_error = TFS_ERR_NOT_EXIST;
+    tfs_last_error = TFS_ERR_NOT_EXIST;
     goto out;
   }
 
   // check if file is in use
   if (item_usage_count(item) > 0) {
-    last_error = TFS_FILE_BUSY;
+    tfs_last_error = TFS_FILE_BUSY;
     goto out;
   }
 #endif
@@ -864,7 +910,7 @@ void tfs_delete(const char *name) {
     // update item
     item->type = TFS_DIR_ITEM_FREE;
     write_dir_cleanup();
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
 
@@ -877,32 +923,32 @@ void tfs_delete(const char *name) {
   if (item->type == TFS_DIR_ITEM_DIR) {
     // read sub directory block
     drive_read_block(pos, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
 
     // check if directory is empty
     if (blk_buf.dir.next != 0) {
-      last_error = TFS_ERR_NOT_EMPTY;
+      tfs_last_error = TFS_ERR_NOT_EMPTY;
       goto out;
     }
     for (i = 0, p = blk_buf.dir.items; i < TFS_DIR_BLK_ITEMS; i++, p++) {
       if (p->type != TFS_DIR_ITEM_FREE) {
-        last_error = TFS_ERR_NOT_EMPTY;
+        tfs_last_error = TFS_ERR_NOT_EMPTY;
         goto out;
       }
     }
 
     // re-read parent directory block
     drive_read_block(loaded_dir_blk, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
 
     // update item
     item->type = TFS_DIR_ITEM_FREE;
     write_dir_cleanup();
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
 
@@ -911,7 +957,7 @@ void tfs_delete(const char *name) {
     goto out;
   }
 
-  last_error = TFS_ERR_NOT_EXIST;
+  tfs_last_error = TFS_ERR_NOT_EXIST;
 out:
   drive_deselect();
 }
@@ -919,30 +965,34 @@ out:
 void tfs_rename(const char *from, const char *to) {
   TFS_DIR_ITEM *item;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   // check if 'to name' already exists
   item = find_file(to, 0);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
   // file already exists?
   if (item != NULL) {
-    last_error = TFS_ERR_FILE_EXIST;
+    tfs_last_error = TFS_ERR_FILE_EXIST;
     goto out;
   }
 
   // find 'from name' item
   item = find_file(from, 0);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
   // file not exists?
   if (item == NULL) {
-    last_error = TFS_ERR_NOT_EXIST;
+    tfs_last_error = TFS_ERR_NOT_EXIST;
     goto out;
   }
 
@@ -977,7 +1027,7 @@ static void init_pos(TFS_FILEHANDLE *hnd) {
 static void update_dir_item(TFS_FILEHANDLE *hnd) {
   // read file's directory block
   drive_read_block(hnd->dir_blk, blk_buf.raw);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     return;
   }
 
@@ -999,13 +1049,13 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append) {
   // seek backward, till we are in requested block
   while (hnd->curr_blk != 0 && hnd->curr_pos > pos) {
     drive_read_block(hnd->curr_blk, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return SEEK_ERROR;
     }
 
     // fail, if we have no prev block
     if (blk_buf.data.prev == 0) {
-      last_error = TFS_ERR_UNEXP_EOF;
+      tfs_last_error = TFS_ERR_UNEXP_EOF;
       return SEEK_ERROR;
     }
 
@@ -1016,7 +1066,7 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append) {
   // seek forward, till we are in requested block
   while (hnd->curr_blk != 0 && (hnd->curr_pos + TFS_DATA_LEN) <= pos) {
     drive_read_block(hnd->curr_blk, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return SEEK_ERROR;
     }
 
@@ -1030,7 +1080,7 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append) {
 
   if (hnd->curr_blk != 0) {
     drive_read_block(hnd->curr_blk, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return SEEK_ERROR;
     }
 
@@ -1046,7 +1096,7 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append) {
   if (hnd->first_blk == 0) {
     // allocate first block
     hnd->first_blk = alloc_block();
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return SEEK_ERROR;
     }
 
@@ -1066,7 +1116,7 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append) {
 
     // update pointer
     drive_write_block(hnd->curr_blk, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return SEEK_ERROR;
     }
 
@@ -1086,7 +1136,11 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append) {
 TFS_DIR_ITEM *tfs_stat(const char *name) {
   TFS_DIR_ITEM *item;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return NULL;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   item = find_file(name, 0);
@@ -1098,12 +1152,16 @@ TFS_DIR_ITEM *tfs_stat(const char *name) {
 void tfs_touch(const char *name) {
   TFS_DIR_ITEM *item;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   // check for name
   item = find_file(name, 1);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
@@ -1118,7 +1176,7 @@ void tfs_touch(const char *name) {
   item->size = 0;
   strncpy(item->name, name, TFS_NAME_LEN);
   drive_write_block(loaded_dir_blk, blk_buf.raw);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
@@ -1131,18 +1189,22 @@ int8_t tfs_open(const char *name) {
   TFS_DIR_ITEM *item;
   int8_t fd = -1;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return -1;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   // search for file
   item = find_file(name, 0);
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
   // file not found?
   if (item == NULL || item->type != TFS_DIR_ITEM_FILE) {
-    last_error = TFS_ERR_NOT_EXIST;
+    tfs_last_error = TFS_ERR_NOT_EXIST;
     goto out;
   }
 
@@ -1157,7 +1219,7 @@ int8_t tfs_open(const char *name) {
   // search for empty handle
   for (fd = 0, hnd = handles; hnd->usage_count > 0; fd++, hnd++) {
     if (fd == TFS_MAX_FDS) {
-      last_error = TFS_ERR_NO_FREE_FD;
+      tfs_last_error = TFS_ERR_NO_FREE_FD;
       fd = -1;
       goto out;
     }
@@ -1179,18 +1241,22 @@ out:
 void tfs_close(int8_t fd) {
   TFS_FILEHANDLE *hnd;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
 
   // check fd range
   if (fd < 0 && fd >= TFS_MAX_FDS) {
-    last_error = TFS_ERR_INVAL_FD;
+    tfs_last_error = TFS_ERR_INVAL_FD;
     return;
   }
 
   // check for valid handle
   hnd = &handles[fd];
   if (hnd->usage_count <= 0) {
-    last_error = TFS_ERR_INVAL_FD;
+    tfs_last_error = TFS_ERR_INVAL_FD;
     return;
   }
 
@@ -1203,26 +1269,30 @@ void tfs_trunc(int8_t fd, uint32_t size) {
   uint8_t seek_res;
   uint32_t free_from = 0;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   // check fd range
   if (fd < 0 && fd >= TFS_MAX_FDS) {
-    last_error = TFS_ERR_INVAL_FD;
+    tfs_last_error = TFS_ERR_INVAL_FD;
     goto out;
   }
 
   // check for valid handle
   hnd = &handles[fd];
   if (hnd->usage_count <= 0) {
-    last_error = TFS_ERR_INVAL_FD;
+    tfs_last_error = TFS_ERR_INVAL_FD;
     goto out;
   }
 
   if (size == 0) {
     // simple case: free all
     free_file_blocks(hnd->first_blk);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
 
@@ -1231,7 +1301,7 @@ void tfs_trunc(int8_t fd, uint32_t size) {
   } else {
     // expand file, if required
     seek_res = seek(hnd, size, 1);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
 
@@ -1244,14 +1314,14 @@ void tfs_trunc(int8_t fd, uint32_t size) {
     // save the last block
     if (seek_res == SEEK_APPEND || free_from != 0) {
       drive_write_block(hnd->curr_blk, blk_buf.raw);
-      if (last_error != TFS_ERR_OK) {
+      if (tfs_last_error != TFS_ERR_OK) {
         goto out;
       }
     }
 
     // free remaining blocks
     free_file_blocks(free_from);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
   }
@@ -1270,19 +1340,23 @@ uint32_t tfs_write(int8_t fd, const uint8_t *data, uint32_t len, uint32_t offset
   uint8_t update_item = 0;
   uint32_t ret = 0;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return 0;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   // check fd range
   if (fd < 0 && fd >= TFS_MAX_FDS) {
-    last_error = TFS_ERR_INVAL_FD;
+    tfs_last_error = TFS_ERR_INVAL_FD;
     goto out;
   }
 
   // check for valid handle
   hnd = &handles[fd];
   if (hnd->usage_count <= 0) {
-    last_error = TFS_ERR_INVAL_FD;
+    tfs_last_error = TFS_ERR_INVAL_FD;
     goto out;
   }
 
@@ -1291,7 +1365,7 @@ uint32_t tfs_write(int8_t fd, const uint8_t *data, uint32_t len, uint32_t offset
     append = 1;
     update_item = 1;
   }
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
@@ -1324,7 +1398,7 @@ uint32_t tfs_write(int8_t fd, const uint8_t *data, uint32_t len, uint32_t offset
 
     // write block
     drive_write_block(hnd->curr_blk, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       goto out;
     }
 
@@ -1347,7 +1421,7 @@ uint32_t tfs_write(int8_t fd, const uint8_t *data, uint32_t len, uint32_t offset
     } else {
       hnd->curr_blk = blk_buf.data.next;
       drive_read_block(hnd->curr_blk, blk_buf.raw);
-      if (last_error != TFS_ERR_OK) {
+      if (tfs_last_error != TFS_ERR_OK) {
         return SEEK_ERROR;
       }
     }
@@ -1373,22 +1447,25 @@ out:
 uint32_t tfs_read(int8_t fd, uint8_t *data, uint32_t len, uint32_t offset) {
   TFS_FILEHANDLE *hnd;
   uint32_t blk_os, blk_len;
-
   uint32_t ret = 0;
 
-  last_error = TFS_ERR_OK;
+  if (tfs_last_error == TFS_ERR_NO_DEV) {
+    return 0;
+  }
+
+  tfs_last_error = TFS_ERR_OK;
   drive_select();
 
   // check fd range
   if (fd < 0 && fd >= TFS_MAX_FDS) {
-    last_error = TFS_ERR_INVAL_FD;
+    tfs_last_error = TFS_ERR_INVAL_FD;
     goto out;
   }
 
   // check for valid handle
   hnd = &handles[fd];
   if (hnd->usage_count <= 0) {
-    last_error = TFS_ERR_INVAL_FD;
+    tfs_last_error = TFS_ERR_INVAL_FD;
     goto out;
   }
 
@@ -1407,7 +1484,7 @@ uint32_t tfs_read(int8_t fd, uint8_t *data, uint32_t len, uint32_t offset) {
   if (seek(hnd, offset, 0) == SEEK_EOF) {
     goto out;
   }
-  if (last_error != TFS_ERR_OK) {
+  if (tfs_last_error != TFS_ERR_OK) {
     goto out;
   }
 
@@ -1442,7 +1519,7 @@ uint32_t tfs_read(int8_t fd, uint8_t *data, uint32_t len, uint32_t offset) {
 
     // read block
     drive_read_block(hnd->curr_blk, blk_buf.raw);
-    if (last_error != TFS_ERR_OK) {
+    if (tfs_last_error != TFS_ERR_OK) {
       return SEEK_ERROR;
     }
 

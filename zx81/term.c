@@ -8,9 +8,9 @@
 
 #define PRINT_A_RST 0x10
 
-static volatile uint8_t   __at 0x4027 DEBOUNCE;
-static volatile uint8_t * __at 0x400C D_FILE;
-static volatile uint16_t  __at 0x4025 LAST_K;
+static volatile uint8_t   __at (0x4027) DEBOUNCE;
+static volatile uint8_t * __at (0x400C) D_FILE;
+static volatile uint16_t  __at (0x4025) LAST_K;
 
 // table mapping ascii (7-bit) to ZX81 char set
 static const uint8_t ascii2zx[] = {
@@ -44,16 +44,35 @@ static const char zx2ascii[] =
 
 char term_buf[TERM_BUFFER_SIZE];
 
-void term_clrscrn() {
+void term_clrscrn(void) __naked {
 __asm
+  push af
+  push bc
+  push hl
+  push ix
+  call _restore_os_regs
+
   call _ROM_CLS
+
+  call _save_os_regs
+  pop ix
+  pop hl
+  pop bc
+  pop af
+
+  ret
 __endasm;
 }
 
-void term_putc(char c) {
+void term_putc(char c) __naked {
+// __sdcccall(1):
+// arg 'c' (8 bit) -> reg 'a'
 __asm
+  push bc
+  push hl
+
   ; convert ASCII to ZX81 charset
-  ld c, 4(ix)
+  ld c, a
   res 7, c
   ld b, #0x00
   ld hl, #_ascii2zx
@@ -61,6 +80,10 @@ __asm
   ld a, (hl)
 
   rst #PRINT_A_RST
+
+  pop hl
+  pop bc
+  ret
 __endasm;
 }
 
@@ -97,14 +120,30 @@ void term_putul_aligned(uint32_t v, uint8_t size) {
   term_puts(p);
 }
 
-uint16_t term_get_key(void) {
+uint16_t term_get_key(void) __naked {
+// __sdcccall(1):
+// return value (16 bit) -> reg 'de'
 __asm
+  push af
+  push bc
+  push hl
+  push ix
+  call _restore_os_regs
+
   ld a, #0xff
   ld (_DEBOUNCE), a
   call _ROM_DISPLAY_1
-  ld hl,(_LAST_K)
   ld a, #0xff
   ld (_DEBOUNCE), a
+
+  call _save_os_regs
+  pop ix
+  pop hl
+  pop bc
+  pop af
+
+  ld de,(_LAST_K)
+  ret
 __endasm;
 }
 
