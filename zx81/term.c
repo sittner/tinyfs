@@ -44,16 +44,33 @@ static const char zx2ascii[] =
 
 char term_buf[TERM_BUFFER_SIZE];
 
-void term_clrscrn(void) {
+void term_clrscrn(void) __naked {
 __asm
+  push af
+  push bc
+  push hl
+  push ix
+  call _restore_os_regs
+
   call _ROM_CLS
+
+  call _save_os_regs
+  pop ix
+  pop hl
+  pop bc
+  pop af
+
+  ret
 __endasm;
 }
 
-void term_putc(char c) {
+void term_putc(char c) __naked {
 // __sdcccall(1):
 // arg 'c' (8 bit) -> reg 'a'
 __asm
+  push bc
+  push hl
+
   ; convert ASCII to ZX81 charset
   ld c, a
   res 7, c
@@ -63,6 +80,10 @@ __asm
   ld a, (hl)
 
   rst #PRINT_A_RST
+
+  pop hl
+  pop bc
+  ret
 __endasm;
 }
 
