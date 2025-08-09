@@ -91,7 +91,7 @@ file name:
 Without prefix, LOAD/SAVE acts as normal tape operation.
 
 To build the hex file for the ROM you will need [SDCC](https://sdcc.sourceforge.net/)
-version [4.1.0](https://sourceforge.net/projects/sdcc/files/sdcc/4.1.0/sdcc-src-4.1.0.tar.bz2/download).
+version [4.5.0](https://sourceforge.net/projects/sdcc/files/sdcc/4.5.0/sdcc-src-4.5.0.tar.bz2/download).
 
 ### Linux
 
