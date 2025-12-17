@@ -63,7 +63,7 @@ static uint8_t seek(TFS_FILEHANDLE *hnd, uint32_t pos, uint8_t append);
 #define TFS_BITMAP_BLK_MASK   (TFS_BITMAP_BLK_COUNT - 1)
 #define TFS_BITMAP_BLK_SHIFT  (TFS_BLOCKSIZE_WIDTH + 3)
 
-#define GET_BITMAK_BLK(x) ((x) & ~TFS_BITMAP_BLK_MASK)
+#define GET_BITMAP_BLK(x) ((x) & ~TFS_BITMAP_BLK_MASK)
 
 #ifndef TFS_FILENAME_CMP
 #define TFS_FILENAME_CMP(ref, cmp) (strncmp(ref, cmp, TFS_NAME_LEN) == 0)
@@ -117,6 +117,11 @@ static uint32_t alloc_block(void) {
       if (*p != 0xff) {
         for (mask = 1; mask != 0; mask <<= 1, block++) {
           if ((*p & mask) == 0) {
+            // check if block is within valid range
+            if (block >= tfs_drive_info.blk_count) {
+              continue;
+            }
+            
             // free block found, mark as used
             *p |= mask;
 
@@ -161,7 +166,7 @@ static void free_block(uint32_t pos) {
   uint16_t offset;
 
   // load corrosponding bitmap block
-  tmp = GET_BITMAK_BLK(pos);
+  tmp = GET_BITMAP_BLK(pos);
   if (loaded_bitmap_blk != tmp) {
     load_bitmap(tmp);
     if (tfs_last_error != TFS_ERR_OK) {
@@ -376,7 +381,7 @@ void tfs_init(void) {
 
   last_bitmap_blk = tfs_drive_info.blk_count - 1;
   last_bitmap_len = (last_bitmap_blk & TFS_BITMAP_BLK_MASK) + 1;
-  last_bitmap_blk = GET_BITMAK_BLK(last_bitmap_blk);
+  last_bitmap_blk = GET_BITMAP_BLK(last_bitmap_blk);
 
   load_bitmap(TFS_FIRST_BITMAP_BLK);
   if (tfs_last_error != TFS_ERR_OK) {
@@ -1248,7 +1253,7 @@ void tfs_close(int8_t fd) {
   tfs_last_error = TFS_ERR_OK;
 
   // check fd range
-  if (fd < 0 && fd >= TFS_MAX_FDS) {
+  if (fd < 0 || fd >= TFS_MAX_FDS) {
     tfs_last_error = TFS_ERR_INVAL_FD;
     return;
   }
@@ -1277,7 +1282,7 @@ void tfs_trunc(int8_t fd, uint32_t size) {
   drive_select();
 
   // check fd range
-  if (fd < 0 && fd >= TFS_MAX_FDS) {
+  if (fd < 0 || fd >= TFS_MAX_FDS) {
     tfs_last_error = TFS_ERR_INVAL_FD;
     goto out;
   }
@@ -1348,7 +1353,7 @@ uint32_t tfs_write(int8_t fd, const uint8_t *data, uint32_t len, uint32_t offset
   drive_select();
 
   // check fd range
-  if (fd < 0 && fd >= TFS_MAX_FDS) {
+  if (fd < 0 || fd >= TFS_MAX_FDS) {
     tfs_last_error = TFS_ERR_INVAL_FD;
     goto out;
   }
@@ -1457,7 +1462,7 @@ uint32_t tfs_read(int8_t fd, uint8_t *data, uint32_t len, uint32_t offset) {
   drive_select();
 
   // check fd range
-  if (fd < 0 && fd >= TFS_MAX_FDS) {
+  if (fd < 0 || fd >= TFS_MAX_FDS) {
     tfs_last_error = TFS_ERR_INVAL_FD;
     goto out;
   }
