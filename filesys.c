@@ -120,8 +120,7 @@ static uint32_t alloc_block(void) {
             // check if block is within valid range
             if (block >= tfs_drive_info.blk_count) {
               // exit both loops to move to next bitmap block
-              i = TFS_BLOCKSIZE;
-              break;
+              goto next_bitmap;
             }
             
             // free block found, mark as used
@@ -139,6 +138,7 @@ static uint32_t alloc_block(void) {
       }
     }
 
+next_bitmap:
     // no free block found, go to next one
     // turn around on end of disk
     if (pos == last_bitmap_blk) {
