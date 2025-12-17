@@ -119,7 +119,9 @@ static uint32_t alloc_block(void) {
           if ((*p & mask) == 0) {
             // check if block is within valid range
             if (block >= tfs_drive_info.blk_count) {
-              continue;
+              // exit both loops to move to next bitmap block
+              i = TFS_BLOCKSIZE;
+              break;
             }
             
             // free block found, mark as used
