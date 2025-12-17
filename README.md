@@ -1,38 +1,67 @@
 # TinyFS
 
-This is a file system for tiny systems. The initial reason to create this project
-was the attempt to build a file system that can run on a ZX81 without any
-additional processors (e.g. an ATMEGA for FAT32 support).
+TinyFS is a minimalist filesystem designed for extremely constrained embedded systems. The initial reason to create this project was the attempt to build a filesystem that can run on a ZX81 without any additional processors (e.g. an ATMEGA for FAT32 support).
 
 ![ZXSD PCB](https://github.com/sittner/tinyfs/raw/main/zx81/hardware/zxsd.png)
 
-In fact, this was a little bit challenging, because I wanted to use 32k RAM and
-32k ROM and due to the architecture of the ZX video system only the lower 16k of
-ROM is useable for executable code. 8k of that is already used by the original
-OS, so the code for the FS has to fit into the remaining 8k block. Fortunately
-the upper 16k is useable to store constant data, so all stuff like that
-(i.e. strings and initializer data) is stored in that area.
+In fact, this was a little bit challenging, because I wanted to use 32k RAM and 32k ROM and due to the architecture of the ZX video system only the lower 16k of ROM is useable for executable code. 8k of that is already used by the original OS, so the code for the FS has to fit into the remaining 8k block. Fortunately the upper 16k is useable to store constant data, so all stuff like that (i.e. strings and initializer data) is stored in that area.
 
-## File system features
+## Quick Start
 
-The main goal was simplicity. So a few features found on file systems like
-FAT/ext2 are missing:
+```c
+#include "filesys.h"
 
-* no create/access/modify timestamps
-* no file attributes
-* no ownership or ACLs
-* no caching
-* hard to fix structural inconsistencies due to the lack of redundant metadata
-* only 512kB block size supported
+int main(void) {
+    // Initialize the filesystem
+    tfs_init();
+    if (tfs_last_error != TFS_ERR_OK) {
+        printf("Failed to initialize filesystem\n");
+        return 1;
+    }
+    
+    // Write a file
+    const char *data = "Hello, TinyFS!";
+    tfs_write_file("hello.txt", (uint8_t*)data, strlen(data), 1);
+    
+    // Read it back
+    uint8_t buffer[256];
+    uint32_t bytes = tfs_read_file("hello.txt", buffer, sizeof(buffer));
+    buffer[bytes] = '\0';
+    printf("Read: %s\n", buffer);
+    
+    return 0;
+}
+```
 
-The pro list shows:
+See [docs/USAGE_EXAMPLES.md](docs/USAGE_EXAMPLES.md) for more examples.
 
-* maximum volume size up to 2TB
-* maximum file size up to 4GB
-* efficient metadata access
-* low code size
-* low RAM usage
-* static memory management
+## Features
+
+TinyFS is designed for extreme simplicity and minimal resource usage, making deliberate trade-offs between features and footprint.
+
+### Capabilities
+
+* **Maximum volume size:** Up to 2TB (terabytes)
+* **Maximum file size:** Up to 4GB (gigabytes)
+* **Efficient metadata access:** Direct block addressing
+* **Low code size:** ~6-15 KB depending on features
+* **Low RAM usage:** ~1-3 KB depending on configuration
+* **Static memory management:** No dynamic allocation
+* **Sequential and random file access:** With Extended API
+* **Subdirectory support:** Unlimited nesting depth
+* **Portable:** Easy to port to any platform with block storage
+
+### Limitations
+
+To achieve minimal resource usage, the following features are intentionally omitted:
+
+* **No timestamps:** No creation, access, or modification times
+* **No file attributes:** No permissions, ownership, or ACLs
+* **No caching:** Direct block I/O (simple but slower)
+* **No redundancy:** Limited error recovery from corruption
+* **Fixed block size:** 512 bytes only (matches SD card sectors)
+
+These trade-offs make TinyFS ideal for extremely constrained systems where FAT32, ext2, or other filesystems won't fit.
 
 ## Hardware
 
@@ -65,6 +94,72 @@ and I've preferred to provide 16kB of RAM.
 Other hires systems like WRX1K, Kevin Baker's HIRES16K or HRG-ms seems to work.
 
 Many thanks to Siggi who helped me much in streamlining the memory encoder stuff.
+
+## Supported Platforms
+
+TinyFS has been ported to multiple platforms and can be adapted to any system with block storage.
+
+### Official Ports
+
+* **ZX81** - Z80 with SD card via custom hardware SPI
+  - ROM: ~8 KB, RAM: ~1 KB
+  - Case-insensitive filenames
+  - Sequential access only
+  
+* **AVR (ATmega328P)** - 8-bit AVR with SD card via hardware SPI
+  - Flash: ~10 KB, RAM: ~1 KB
+  - Format support
+  - Sequential access only
+  
+* **Linux (FUSE)** - Full-featured desktop implementation
+  - File-backed or block device
+  - All features enabled
+  - Random file access with up to 32 file descriptors
+
+### Custom Platforms
+
+TinyFS can be ported to any platform that provides:
+- Block storage with 512-byte sectors (SD/MMC cards, flash, file emulation)
+- Approximately 1-3 KB of RAM
+- Approximately 6-15 KB of ROM/Flash for code
+
+See [docs/PORTING_GUIDE.md](docs/PORTING_GUIDE.md) for porting instructions.
+
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+* **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Filesystem design and internal structures
+  - Overview of block types (bitmap, directory, data)
+  - Block size and layout details
+  - Memory usage and limitations
+  
+* **[API_REFERENCE.md](docs/API_REFERENCE.md)** - Complete API documentation
+  - All public functions with examples
+  - Error codes and handling
+  - Basic and Extended API reference
+  
+* **[CONFIGURATION.md](docs/CONFIGURATION.md)** - Configuration options guide
+  - Feature flags (format, extended API, etc.)
+  - Platform-specific settings
+  - Memory vs. features trade-offs
+  
+* **[USAGE_EXAMPLES.md](docs/USAGE_EXAMPLES.md)** - Practical code examples
+  - Basic file operations
+  - Directory navigation
+  - Random access I/O (Extended API)
+  - Error handling patterns
+  
+* **[PORTING_GUIDE.md](docs/PORTING_GUIDE.md)** - How to port to new platforms
+  - Required interface functions
+  - Platform examples (AVR, Linux, ZX81)
+  - Testing and troubleshooting
+  
+* **[INTERNAL_DESIGN.md](docs/INTERNAL_DESIGN.md)** - Implementation details
+  - Block buffer management
+  - Allocation algorithms
+  - Seek optimization
+  - Performance characteristics
 
 ## Ports
 
