@@ -121,7 +121,7 @@ Given any block number, find its bitmap block:
 
 ```c
 #define TFS_BITMAP_BLK_MASK   (TFS_BITMAP_BLK_COUNT - 1)  // 0x0FFF
-#define GET_BITMAK_BLK(x)     ((x) & ~TFS_BITMAP_BLK_MASK)
+#define GET_BITMAK_BLK(x)     ((x) & ~TFS_BITMAP_BLK_MASK)  // Note: typo in original code
 
 // Example: Block 5432
 // 5432 & ~0x0FFF = 5432 & 0xFFFFF000 = 4096

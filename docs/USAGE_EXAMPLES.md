@@ -297,7 +297,9 @@ void copy_file(const char *source, const char *dest) {
     }
     size = item->size;
     #else
-    size = 65536;  // Assume maximum size
+    // Without Extended API, we need to allocate a large enough buffer
+    // This is a limitation - adjust based on your expected file sizes
+    size = 8192;  // Reasonable default for embedded systems
     #endif
     
     // Allocate buffer
