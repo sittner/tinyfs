@@ -517,7 +517,7 @@ void drive_write_block(uint32_t blkno, const uint8_t *data) {
 
 **Files:**
 - `zx81/filesys_conf.h` - Configuration
-- `zx81/spi.c` - Bit-banged SPI
+- `zx81/spi.c` - Custom hardware SPI implementation
 - `mmc.c` - MMC/SD card driver (shared)
 
 **Configuration (`zx81/filesys_conf.h`):**
@@ -548,7 +548,7 @@ uint8_t spi_transfer_byte(uint8_t b);
 - Case-insensitive filename comparison (ZX81 character set)
 - No formatting (save ROM space)
 - No extended API (save RAM)
-- Bit-banged SPI (no hardware SPI on Z80)
+- Custom hardware SPI implementation (specially designed hardware for SPI operations)
 
 ---
 

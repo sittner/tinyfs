@@ -101,7 +101,7 @@ TinyFS has been ported to multiple platforms and can be adapted to any system wi
 
 ### Official Ports
 
-* **ZX81** - Z80 with SD card via bit-banged SPI
+* **ZX81** - Z80 with SD card via custom hardware SPI
   - ROM: ~8 KB, RAM: ~1 KB
   - Case-insensitive filenames
   - Sequential access only
