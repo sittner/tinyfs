@@ -99,6 +99,14 @@
 #define STATE_ADDR_ERR      (1 << 5)
 #define STATE_PARAM_ERR     (1 << 6)
 
+// data response token for write operations
+// format: xxx0sss1, where sss indicates:
+// 010 (0x05 when masked with 0x1F) = Data accepted
+// 101 (0x0B when masked with 0x1F) = Data rejected, CRC error
+// 110 (0x0D when masked with 0x1F) = Data rejected, write error
+#define DATA_RESPONSE_MASK     0x1F
+#define DATA_RESPONSE_ACCEPTED 0x05
+
 #define TIMEOUT 0x7fff
 
 // private helper functions
@@ -332,7 +340,16 @@ void drive_write_block(uint32_t blkno, const uint8_t *data) {
   spi_send_byte(0xff);
   spi_send_byte(0xff);
 
-  // wait while card is busy
+  // read and verify data response token
+  // the card responds with a token indicating if data was accepted
+  uint8_t response = spi_rec_byte();
+  if ((response & DATA_RESPONSE_MASK) != DATA_RESPONSE_ACCEPTED) {
+    // data rejected: either CRC error (0x0B) or write error (0x0D)
+    tfs_last_error = TFS_ERR_IO;
+    return;
+  }
+
+  // wait while card is busy (card pulls line low during programming)
   if (!wait_byte(0xff)) {
     tfs_last_error = TFS_ERR_IO;
     return;
