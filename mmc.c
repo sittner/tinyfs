@@ -100,10 +100,11 @@
 #define STATE_PARAM_ERR     (1 << 6)
 
 // data response token for write operations
-// format: xxx0sss1, where sss indicates:
-// 010 (0x05 when masked with 0x1F) = Data accepted
-// 101 (0x0B when masked with 0x1F) = Data rejected, CRC error
-// 110 (0x0D when masked with 0x1F) = Data rejected, write error
+// format: xxx0sss1 (8 bits), where bits [3:1] (sss) indicate status:
+// - sss=010: Data accepted    → full token masked = 0x05 (xxx00101)
+// - sss=101: CRC error        → full token masked = 0x0B (xxx01011)
+// - sss=110: Write error      → full token masked = 0x0D (xxx01101)
+// mask extracts bits [4:0] to include the fixed bit 0 (always 1) and bit 4 (always 0)
 #define DATA_RESPONSE_MASK     0x1F
 #define DATA_RESPONSE_ACCEPTED 0x05
 
